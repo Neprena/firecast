@@ -1,80 +1,82 @@
-// frontend/App.js
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TextInput, Alert, FlatList, TouchableOpacity, StyleSheet, RefreshControl, StatusBar, useColorScheme } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StatusBar, useColorScheme, AppState } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { SafeAreaView, useSafeAreaInsets, SafeAreaProvider } from "react-native-safe-area-context";
 import NetInfo from "@react-native-community/netinfo";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import LoginScreen from "./screens/LoginScreen";
+import MessagesScreen from "./screens/MessagesScreen";
+import ProfileScreen from "./screens/ProfileScreen";
+import { lightStyles, darkStyles } from "./styles";
 
-const API_URL = "http://84.234.18.3:3001"; // Assurez-vous que le backend tourne bien sur cette adresse
+const API_URL = "http://84.234.18.3:3001";
+const API_KEY = Constants.expoConfig?.extra?.apiKey || "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
+const Stack = createNativeStackNavigator();
 
-function App() {
+export default function App() {
   const colorScheme = useColorScheme();
-  const [theme, setTheme] = useState(colorScheme);
   const isDarkMode = colorScheme === "dark";
-  const styles = theme === "dark" ? darkStyles : lightStyles;
-  const insets = useSafeAreaInsets();
+  const styles = isDarkMode ? darkStyles : lightStyles;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
+  const [expoPushToken, setExpoPushToken] = useState("");
 
   useEffect(() => {
+    console.log("Initialisation de l’app...");
     checkLoginStatus();
-    registerForPushNotificationsAsync();
-    loadMessagesFromStorage();
+    registerForPushNotifications();
+    loadCachedMessages();
     fetchMessages();
 
-    const subscription = Notifications.addNotificationReceivedListener((notification) => {
-      fetchMessages();
-    });
-    return () => subscription.remove();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMessages();
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const netInfoListener = NetInfo.addEventListener((state) => {
       setIsConnected(state.isInternetReachable);
-      if (state.isInternetReachable) {
-        fetchMessages(); // Resynchronisation automatique en ligne
+      if (state.isInternetReachable) fetchMessages();
+    });
+
+    const backgroundSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log("Notification reçue en arrière-plan :", response);
+      const data = response.notification.request.content.data || {};
+      if (data.type === "new_message" && isLoggedIn) {
+        fetchMessages();
       }
     });
 
-    return () => unsubscribe();
-  }, []);
+    const appStateListener = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active" && isLoggedIn) {
+        console.log("App revenue au premier plan, rechargement des messages...");
+        fetchMessages();
+      }
+    });
 
-  // Détecter les changements de thème en direct
-  useEffect(() => {
-    setTheme(colorScheme);
-  }, [colorScheme]);
+    return () => {
+      netInfoListener();
+      backgroundSubscription.remove();
+      appStateListener.remove();
+    };
+  }, [isLoggedIn]);
 
   const checkLoginStatus = async () => {
     const storedEmail = await AsyncStorage.getItem("email");
     if (storedEmail) {
+      console.log("Email trouvé dans AsyncStorage :", storedEmail);
       setEmail(storedEmail);
       setIsLoggedIn(true);
       fetchMessages();
+      if (expoPushToken) {
+        console.log("Token existant, enregistrement pour :", storedEmail);
+        await registerPushToken(storedEmail);
+      } else {
+        console.log("Aucun token push disponible au démarrage, génération en cours...");
+      }
     }
-  };
-
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("email");
-    setIsLoggedIn(false);
-    setShowProfile(false);
-    setEmail("");
-    setPassword("");
   };
 
   const handleLogin = async () => {
@@ -83,196 +85,174 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-api-key": API_KEY,
         },
         body: JSON.stringify({ email, password }),
       });
-      if (!response.ok) throw new Error("Invalid credentials");
-      const data = await response.json();
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Invalid credentials or API key");
+      console.log("Connexion réussie :", json);
       await AsyncStorage.setItem("email", email);
       setIsLoggedIn(true);
       fetchMessages();
+      if (expoPushToken) {
+        console.log("Token disponible après connexion, enregistrement...");
+        await registerPushToken(email);
+      } else {
+        console.log("Token push non disponible après connexion, tentative de génération...");
+        await registerForPushNotifications();
+      }
     } catch (error) {
-      Alert.alert("Erreur", "Email ou mot de passe incorrect.");
+      console.warn("Erreur de connexion :", error.message);
+      alert("Erreur", "Email, mot de passe ou clé API incorrect.");
     }
   };
 
-  const registerForPushNotificationsAsync = async () => {
-    if (Device.isDevice) {
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem("email");
+    setIsLoggedIn(false);
+    setEmail("");
+    setPassword("");
+    console.log("Déconnexion effectuée");
+  };
+
+  const registerForPushNotifications = async () => {
+    if (!Device.isDevice) {
+      console.warn("Notifications push non disponibles sur simulateur");
+      return;
+    }
+    try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      console.log("Statut des permissions actuel :", existingStatus);
       let finalStatus = existingStatus;
       if (existingStatus !== "granted") {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
+        console.log("Nouveau statut des permissions :", finalStatus);
       }
       if (finalStatus !== "granted") {
-        Alert.alert("Erreur", "Les notifications push ne sont pas autorisées.");
+        console.warn("Permissions de notification non accordées");
         return;
       }
-      const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig.extra.eas.projectId })).data;
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
+      console.log("Expo Push Token généré :", token);
       setExpoPushToken(token);
-    } else {
-      //Alert.alert("Erreur", "Les notifications push ne fonctionnent pas sur un simulateur.");
+      if (email) {
+        console.log("Email disponible, enregistrement du token pour :", email);
+        await registerPushToken(email);
+      } else {
+        console.log("Token généré mais pas d’email pour l’enregistrement");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la génération du token push :", error);
     }
   };
 
-  const loadMessagesFromStorage = async () => {
+  const registerPushToken = async (userEmail) => {
+    if (!expoPushToken || !userEmail) {
+      console.warn("Token ou email manquant pour l’enregistrement :", { expoPushToken, userEmail });
+      return;
+    }
     try {
-      const storedMessages = await AsyncStorage.getItem("messages");
-      if (storedMessages) {
-        setMessages(JSON.parse(storedMessages));
+      const response = await fetch(`${API_URL}/register-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({ email: userEmail, token: expoPushToken }),
+      });
+      const json = await response.json();
+      if (response.ok) {
+        console.log("Token enregistré avec succès :", json);
+      } else {
+        console.warn("Échec de l’enregistrement du token :", json);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des messages locaux", error);
+      console.warn("Erreur lors de l’enregistrement du token :", error);
+    }
+  };
+
+  const loadCachedMessages = async () => {
+    try {
+      const cachedMessages = await AsyncStorage.getItem("messages");
+      if (cachedMessages) {
+        setMessages(JSON.parse(cachedMessages));
+        console.log("Messages chargés depuis le cache");
+      }
+    } catch (error) {
+      console.warn("Erreur lors du chargement des messages en cache :", error);
     }
   };
 
   const fetchMessages = async () => {
     try {
-      setRefreshing(true);
-      const response = await fetch(`${API_URL}/messages`);
-      if (!response.ok) throw new Error("Serveur injoignable");
+      const response = await fetch(`${API_URL}/messages`, {
+        headers: {
+          "x-api-key": API_KEY,
+        },
+      });
+      if (!response.ok) throw new Error("Server unreachable or invalid API key");
       const data = await response.json();
       setMessages(data);
       await AsyncStorage.setItem("messages", JSON.stringify(data));
       setIsConnected(true);
+      console.log("Messages récupérés avec succès :", data.length);
     } catch (error) {
       setIsConnected(false);
-      console.warn("⚠ Impossible de récupérer les messages. Utilisation du cache.");
-      const storedMessages = await AsyncStorage.getItem("messages");
-      if (storedMessages) {
-        setMessages(JSON.parse(storedMessages)); // Chargement du cache
-      }
-    } finally {
-      setRefreshing(false);
+      loadCachedMessages();
+      console.warn("Erreur lors de la récupération des messages :", error);
     }
   };
 
-  const groupMessagesByDate = (messages) => {
-    const grouped = {};
-    messages.forEach((message) => {
-      const date = new Date(message.timestamp).toLocaleDateString();
-      if (!grouped[date]) {
-        grouped[date] = [];
-      }
-      grouped[date].push(message);
-    });
-    return grouped;
-  };
-
-  const groupedMessages = groupMessagesByDate(messages);
-  const sections = Object.keys(groupedMessages).map((date) => ({
-    title: date,
-    data: groupedMessages[date],
-  }));
-
-  const onRefresh = useCallback(() => {
-    fetchMessages();
-  }, []);
-
-  if (!isLoggedIn) {
-    return (
-      <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-        {!isConnected && (
-          <View style={styles.warningBanner}>
-            <Text style={styles.warningText}>⚠ Connexion au serveur perdue</Text>
-          </View>
-        )}
-        <Text style={styles.title}>Connexion</Text>
-        <TextInput placeholder="E-mail" value={email} onChangeText={setEmail} keyboardType="email-address" style={styles.input} />
-        <TextInput placeholder="Mot de passe" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Se connecter</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  if (showProfile) {
-    return (
-      <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.title}>Profil</Text>
-        <Text style={styles.info}>Utilisateur: {email}</Text>
-        <Text style={styles.info}>Statut: Connecté</Text>
-
-        {/* Nouveau statut de connexion */}
-        <Text style={[styles.info, { color: isConnected ? "green" : "red" }]}>Serveur : {isConnected ? "Connecté ✅" : "Déconnecté ❌"}</Text>
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>Se déconnecter</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => setShowProfile(false)}>
-          <Text style={styles.buttonText}>Retour</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      {!isConnected && (
-        <View style={styles.warningBanner}>
-          <Text style={styles.warningText}>⚠ Mode hors ligne - Affichage des messages stockés</Text>
-        </View>
-      )}
-      <Text style={styles.title}>Historique des Messages</Text>
-      <FlatList
-        data={Object.keys(groupedMessages)}
-        keyExtractor={(date) => date}
-        renderItem={({ item: date }) => (
-          <View>
-            <Text style={styles.dateHeader}>{date}</Text>
-            {groupedMessages[date]?.map((message) => (
-              <View key={message.id} style={styles.message}>
-                <Text style={styles.messageText}>{message.message}</Text>
-                <Text style={styles.timestamp}>{new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      />
-      <TouchableOpacity style={styles.profileButton} onPress={() => setShowProfile(true)}>
-        <Text style={styles.buttonText}>Profil / A propos</Text>
-      </TouchableOpacity>
-    </SafeAreaView>
-  );
-}
-
-export default function Main() {
   return (
     <SafeAreaProvider>
-      <App />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {!isLoggedIn ? (
+            <Stack.Screen name="Login">
+              {(props) => (
+                <LoginScreen
+                  {...props}
+                  email={email}
+                  setEmail={setEmail}
+                  password={password}
+                  setPassword={setPassword}
+                  handleLogin={handleLogin}
+                  styles={styles}
+                  isConnected={isConnected}
+                />
+              )}
+            </Stack.Screen>
+          ) : (
+            <>
+              <Stack.Screen name="Messages">
+                {(props) => (
+                  <MessagesScreen
+                    {...props}
+                    messages={messages}
+                    fetchMessages={fetchMessages}
+                    styles={styles}
+                    isConnected={isConnected}
+                  />
+                )}
+              </Stack.Screen>
+              <Stack.Screen name="Profile">
+                {(props) => (
+                  <ProfileScreen
+                    {...props}
+                    email={email}
+                    handleLogout={handleLogout}
+                    styles={styles}
+                    isConnected={isConnected}
+                  />
+                )}
+              </Stack.Screen>
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }
-
-const lightStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff", alignItems: "center", justifyContent: "center", padding: 20 },
-  title: { fontSize: 28, fontWeight: "bold", marginBottom: 20, color: "#000000" },
-  input: { width: "100%", padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#ccc", borderRadius: 8, backgroundColor: "#f5f5f5", color: "#000000" },
-  button: { backgroundColor: "#007BFF", padding: 14, borderRadius: 8, alignItems: "center", width: "100%" },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  message: { backgroundColor: "#f0f0f0", padding: 12, marginVertical: 5, borderRadius: 8, width: "100%" },
-  info: { fontSize: 16, marginBottom: 10, color: "#000000" },
-  profileButton: { marginTop: 20, padding: 10, backgroundColor: "#444", borderRadius: 8, alignItems: "center" },
-  buttonText: { color: "#fff", fontSize: 16 },
-  secondaryButton: { marginTop: 10, backgroundColor: "#888", padding: 10, borderRadius: 8 },
-  warningBanner: { backgroundColor: "#ff4444", padding: 10, width: "100%", alignItems: "center" },
-  warningText: { color: "#ffffff", fontWeight: "bold" },
-  timestamp: { fontSize: 12, color: "#666", marginTop: 4, alignSelf: "flex-end" },
-  dateHeader: { fontSize: 16, fontWeight: "bold", color: "#333", backgroundColor: "#838383", padding: 6, marginTop: 10, borderRadius: 5, textAlign: "center" },
-});
-
-const darkStyles = {
-  ...lightStyles,
-  container: { backgroundColor: "#121212" },
-  title: { color: "#ffffff" },
-  input: { backgroundColor: "#222", color: "#ffffff", borderColor: "#444" },
-  message: { backgroundColor: "#1E1E1E" },
-  messageText: { color: "#ffffff" },
-  info: { color: "#ffffff" },
-  profileButton: { marginTop: 20, padding: 10, backgroundColor: "#ddd", borderRadius: 8, alignItems: "center" },
-  buttonText: { color: "#000", fontSize: 16 },
-  warningBanner: { backgroundColor: "#aa0000" },
-};
