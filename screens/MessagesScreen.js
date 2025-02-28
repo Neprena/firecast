@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect } from "react";
 import { SafeAreaView, Text, FlatList, TouchableOpacity, View, RefreshControl } from "react-native";
 import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnected }) => {
+const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnected, subscriptionEndDate, role }) => {
   const groupMessagesByDate = (msgs) => {
     const grouped = {};
     msgs.forEach((msg) => {
@@ -16,20 +17,34 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   const sections = groupMessagesByDate(messages);
   const onRefresh = useCallback(() => fetchMessages(), []);
 
+  // Les admins ne sont pas concernés par l’expiration
+  const isSubscriptionActive = role === "admin" || (subscriptionEndDate && new Date(subscriptionEndDate) > new Date());
+
   useEffect(() => {
-    // Listener pour les notifications reçues quand l'app est au premier plan
-    const subscription = Notifications.addNotificationReceivedListener((notification) => {
-      const { request } = notification;
-      const data = request.content.data;
-      // Vérifie si la notification concerne un nouveau message
-      if (data && data.type === "new_message") {
-        fetchMessages(); // Rafraîchit la liste
+    const subscription = Notifications.addNotificationReceivedListener(async (notification) => {
+      console.log("Notification reçue au premier plan :", notification);
+      const data = notification.request.content.data || {};
+      const notificationsEnabled = JSON.parse(await AsyncStorage.getItem("notificationsEnabled") || "true");
+      if (data.type === "new_message" && notificationsEnabled) {
+        console.log("Nouveau message détecté, rafraîchissement...");
+        fetchMessages();
       }
     });
 
-    // Nettoyage du listener
     return () => subscription.remove();
   }, [fetchMessages]);
+
+  if (!isSubscriptionActive) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Abonnement expiré</Text>
+        <Text style={styles.info}>Votre abonnement a expiré. Veuillez vous réabonner depuis votre profil pour accéder aux messages.</Text>
+        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate("Profile")}>
+          <Text style={styles.buttonText}>Aller au profil</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>

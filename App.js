@@ -28,54 +28,88 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [isConnected, setIsConnected] = useState(true);
   const [expoPushToken, setExpoPushToken] = useState("");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
+  const [role, setRole] = useState("normal");
 
   useEffect(() => {
     console.log("Initialisation de l’app...");
     checkLoginStatus();
+    loadNotificationSetting();
     registerForPushNotifications();
     loadCachedMessages();
     fetchMessages();
 
     const netInfoListener = NetInfo.addEventListener((state) => {
       setIsConnected(state.isInternetReachable);
-      if (state.isInternetReachable) fetchMessages();
+      if (state.isInternetReachable) {
+        fetchMessages();
+        refreshUserInfo();
+      }
     });
 
     const backgroundSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
       console.log("Notification reçue en arrière-plan :", response);
       const data = response.notification.request.content.data || {};
-      if (data.type === "new_message" && isLoggedIn) {
+      if (data.type === "new_message" && isLoggedIn && notificationsEnabled) {
         fetchMessages();
       }
     });
 
     const appStateListener = AppState.addEventListener("change", (nextAppState) => {
       if (nextAppState === "active" && isLoggedIn) {
-        console.log("App revenue au premier plan, rechargement des messages...");
+        console.log("App revenue au premier plan, rechargement des messages et infos utilisateur...");
         fetchMessages();
+        refreshUserInfo();
       }
     });
+
+    const intervalId = setInterval(() => {
+      if (isLoggedIn) {
+        refreshUserInfo();
+      }
+    }, 5 * 60 * 1000);
 
     return () => {
       netInfoListener();
       backgroundSubscription.remove();
       appStateListener.remove();
+      clearInterval(intervalId);
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, notificationsEnabled]);
+
+  const loadNotificationSetting = async () => {
+    try {
+      const value = await AsyncStorage.getItem("notificationsEnabled");
+      if (value !== null) {
+        setNotificationsEnabled(JSON.parse(value));
+      }
+    } catch (error) {
+      console.warn("Erreur lors du chargement des paramètres de notification :", error);
+    }
+  };
 
   const checkLoginStatus = async () => {
-    const storedEmail = await AsyncStorage.getItem("email");
-    if (storedEmail) {
-      console.log("Email trouvé dans AsyncStorage :", storedEmail);
-      setEmail(storedEmail);
-      setIsLoggedIn(true);
-      fetchMessages();
-      if (expoPushToken) {
-        console.log("Token existant, enregistrement pour :", storedEmail);
-        await registerPushToken(storedEmail);
-      } else {
-        console.log("Aucun token push disponible au démarrage, génération en cours...");
+    try {
+      const storedEmail = await AsyncStorage.getItem("email");
+      const storedSubscriptionEndDate = await AsyncStorage.getItem("subscriptionEndDate");
+      const storedRole = await AsyncStorage.getItem("role");
+
+      if (storedEmail) {
+        console.log("Email trouvé dans AsyncStorage :", storedEmail);
+        setEmail(storedEmail);
+        setSubscriptionEndDate(storedSubscriptionEndDate ? storedSubscriptionEndDate : null);
+        setRole(storedRole ? storedRole : "normal");
+        setIsLoggedIn(true);
+        fetchMessages();
+        if (expoPushToken && notificationsEnabled) {
+          console.log("Token existant, enregistrement pour :", storedEmail);
+          await registerPushToken(storedEmail);
+        }
+        await refreshUserInfo();
       }
+    } catch (error) {
+      console.warn("Erreur lors de la vérification du statut de connexion :", error);
     }
   };
 
@@ -93,14 +127,15 @@ export default function App() {
       if (!response.ok) throw new Error(json.error || "Invalid credentials or API key");
       console.log("Connexion réussie :", json);
       await AsyncStorage.setItem("email", email);
+      await AsyncStorage.setItem("subscriptionEndDate", json.subscriptionEndDate || "");
+      await AsyncStorage.setItem("role", json.role || "normal");
       setIsLoggedIn(true);
+      setSubscriptionEndDate(json.subscriptionEndDate);
+      setRole(json.role);
       fetchMessages();
-      if (expoPushToken) {
+      if (expoPushToken && notificationsEnabled) {
         console.log("Token disponible après connexion, enregistrement...");
         await registerPushToken(email);
-      } else {
-        console.log("Token push non disponible après connexion, tentative de génération...");
-        await registerForPushNotifications();
       }
     } catch (error) {
       console.warn("Erreur de connexion :", error.message);
@@ -110,15 +145,23 @@ export default function App() {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("email");
+    await AsyncStorage.removeItem("subscriptionEndDate");
+    await AsyncStorage.removeItem("role");
     setIsLoggedIn(false);
     setEmail("");
     setPassword("");
+    setSubscriptionEndDate(null);
+    setRole("normal");
     console.log("Déconnexion effectuée");
   };
 
   const registerForPushNotifications = async () => {
     if (!Device.isDevice) {
       console.warn("Notifications push non disponibles sur simulateur");
+      return;
+    }
+    if (!notificationsEnabled) {
+      console.log("Notifications désactivées, pas de génération de token");
       return;
     }
     try {
@@ -140,8 +183,6 @@ export default function App() {
       if (email) {
         console.log("Email disponible, enregistrement du token pour :", email);
         await registerPushToken(email);
-      } else {
-        console.log("Token généré mais pas d’email pour l’enregistrement");
       }
     } catch (error) {
       console.error("Erreur lors de la génération du token push :", error);
@@ -186,13 +227,23 @@ export default function App() {
   };
 
   const fetchMessages = async () => {
+    if (!email) {
+      console.warn("Aucun email disponible pour fetchMessages");
+      return;
+    }
     try {
       const response = await fetch(`${API_URL}/messages`, {
+        method: "POST", // Changé en POST pour envoyer email dans le corps
         headers: {
+          "Content-Type": "application/json",
           "x-api-key": API_KEY,
         },
+        body: JSON.stringify({ email }), // Ajout de l’email dans le corps
       });
-      if (!response.ok) throw new Error("Server unreachable or invalid API key");
+      if (!response.ok) {
+        const json = await response.json();
+        throw new Error(json.error || "Server unreachable or invalid API key");
+      }
       const data = await response.json();
       setMessages(data);
       await AsyncStorage.setItem("messages", JSON.stringify(data));
@@ -202,6 +253,33 @@ export default function App() {
       setIsConnected(false);
       loadCachedMessages();
       console.warn("Erreur lors de la récupération des messages :", error);
+      if (error.message === "Abonnement expiré") {
+        alert("Erreur", "Votre abonnement a expiré. Veuillez vous réabonner.");
+      }
+    }
+  };
+
+  const refreshUserInfo = async () => {
+    if (!email) return;
+    try {
+      const response = await fetch(`${API_URL}/user-info`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({ email }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Erreur lors de la récupération des infos utilisateur");
+
+      setSubscriptionEndDate(json.subscriptionEndDate);
+      setRole(json.role);
+      await AsyncStorage.setItem("subscriptionEndDate", json.subscriptionEndDate || "");
+      await AsyncStorage.setItem("role", json.role || "normal");
+      console.log("Infos utilisateur rafraîchies :", { role: json.role, subscriptionEndDate: json.subscriptionEndDate });
+    } catch (error) {
+      console.warn("Erreur lors du rafraîchissement des infos utilisateur :", error.message);
     }
   };
 
@@ -235,6 +313,8 @@ export default function App() {
                     fetchMessages={fetchMessages}
                     styles={styles}
                     isConnected={isConnected}
+                    subscriptionEndDate={subscriptionEndDate}
+                    role={role}
                   />
                 )}
               </Stack.Screen>
@@ -246,6 +326,8 @@ export default function App() {
                     handleLogout={handleLogout}
                     styles={styles}
                     isConnected={isConnected}
+                    subscriptionEndDate={subscriptionEndDate}
+                    role={role}
                   />
                 )}
               </Stack.Screen>
