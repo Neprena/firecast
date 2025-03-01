@@ -3,7 +3,7 @@ import { SafeAreaView, Text, TouchableOpacity, View, FlatList, TextInput, Alert,
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-const API_URL = "http://84.234.18.3:3001";
+const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 
 const AdminScreen = ({ navigation, styles, email }) => {
@@ -125,7 +125,7 @@ const AdminScreen = ({ navigation, styles, email }) => {
       <TouchableOpacity
         style={[
           styles.toggleButton,
-          { backgroundColor: item.isActive ? styles.deleteButton.backgroundColor : styles.button.backgroundColor },
+          { backgroundColor: item.isActive ? styles.logoutButton.backgroundColor : styles.button.backgroundColor },
         ]}
         onPress={() => toggleUserActive(item.email, item.isActive)}
       >
@@ -266,7 +266,7 @@ const AdminScreen = ({ navigation, styles, email }) => {
 
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={styles.button.backgroundColor} />
+          <ActivityIndicator size="large" color={styles.button?.backgroundColor || "#007AFF"} />
         </View>
       )}
     </SafeAreaView>
