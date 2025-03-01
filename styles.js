@@ -10,11 +10,11 @@ export const lightStyles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 5, // Réduit pour coller à la version
+    marginBottom: 5,
     color: "#000000",
   },
-  subtitle: { // Agrandi pour "Profil"
-    fontSize: 24, // Augmenté de 20 à 24
+  subtitle: {
+    fontSize: 24,
     fontWeight: "normal",
     marginBottom: 20,
     color: "#000000",
@@ -64,7 +64,7 @@ export const lightStyles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryButton: {
-    marginTop: 10,
+    marginTop: 20,
     backgroundColor: "#888",
     padding: 10,
     borderRadius: 8,
@@ -127,8 +127,107 @@ export const lightStyles = StyleSheet.create({
   versionText: {
     fontSize: 12,
     color: "#666",
-    marginBottom: 20, // Espacement avant "Profil"
+    marginBottom: 20,
     textAlign: "center",
+  },
+  userList: {
+    width: "100%",
+    marginTop: 10,
+  },
+  userItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 8,
+    width: "100%",
+  },
+  userRow: {
+    flex: 1,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  addContainer: {
+    width: "100%",
+    padding: 10,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    width: "90%",
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 8,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  picker: {
+    width: "100%",
+    height: 50,
+    marginBottom: 12,
+    paddingVertical: 5,
+    fontSize: 16,
+  },
+  toggleButton: {
+    padding: 8,
+    borderRadius: 8,
+    marginLeft: 10,
+    minWidth: 100,
+    alignItems: "center",
+  },
+  filterContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 10,
+  },
+  filterButton: {
+    flex: 1,
+    backgroundColor: "#ccc",
+    padding: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    marginHorizontal: 2,
+  },
+  deleteButton: {
+    backgroundColor: "#ff4444",
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    width: "100%",
+    marginTop: 10,
+  },
+  roleSelector: { // Nouveau style pour les boutons radio
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 12,
+  },
+  roleButton: { // Style par défaut
+    flex: 1,
+    backgroundColor: "#ccc",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginHorizontal: 5,
+  },
+  roleButtonSelected: { // Style quand sélectionné
+    backgroundColor: "#007BFF",
   },
 });
 
@@ -186,5 +285,47 @@ export const darkStyles = {
   versionText: {
     ...lightStyles.versionText,
     color: "#999",
+  },
+  userItem: {
+    ...lightStyles.userItem,
+    backgroundColor: "#1E1E1E",
+  },
+  addContainer: {
+    ...lightStyles.addContainer,
+    backgroundColor: "#1E1E1E",
+  },
+  modalContent: {
+    ...lightStyles.modalContent,
+    backgroundColor: "#1E1E1E",
+  },
+  picker: {
+    ...lightStyles.picker,
+    color: "#ffffff",
+    backgroundColor: "#222",
+  },
+  toggleButton: {
+    ...lightStyles.toggleButton,
+  },
+  filterContainer: {
+    ...lightStyles.filterContainer,
+  },
+  filterButton: {
+    ...lightStyles.filterButton,
+    backgroundColor: "#444",
+  },
+  deleteButton: {
+    ...lightStyles.deleteButton,
+    backgroundColor: "#aa0000",
+  },
+  roleSelector: {
+    ...lightStyles.roleSelector,
+  },
+  roleButton: {
+    ...lightStyles.roleButton,
+    backgroundColor: "#444",
+  },
+  roleButtonSelected: {
+    ...lightStyles.roleButtonSelected,
+    backgroundColor: "#81b0ff",
   },
 };

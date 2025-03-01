@@ -11,6 +11,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
 import MessagesScreen from "./screens/MessagesScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import AdminScreen from "./screens/AdminScreen";
+import EditUserScreen from "./screens/EditUserScreen"; // Ajout de l’importation
 import { lightStyles, darkStyles } from "./styles";
 
 const API_URL = "http://84.234.18.3:3001";
@@ -233,12 +235,12 @@ export default function App() {
     }
     try {
       const response = await fetch(`${API_URL}/messages`, {
-        method: "POST", // Changé en POST pour envoyer email dans le corps
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": API_KEY,
         },
-        body: JSON.stringify({ email }), // Ajout de l’email dans le corps
+        body: JSON.stringify({ email }),
       });
       if (!response.ok) {
         const json = await response.json();
@@ -328,6 +330,23 @@ export default function App() {
                     isConnected={isConnected}
                     subscriptionEndDate={subscriptionEndDate}
                     role={role}
+                  />
+                )}
+              </Stack.Screen>
+              <Stack.Screen name="Admin">
+                {(props) => (
+                  <AdminScreen
+                    {...props}
+                    email={email}
+                    styles={styles}
+                  />
+                )}
+              </Stack.Screen>
+              <Stack.Screen name="EditUser">
+                {(props) => (
+                  <EditUserScreen
+                    {...props}
+                    styles={styles}
                   />
                 )}
               </Stack.Screen>

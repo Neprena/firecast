@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants"; // Pour récupérer la version depuis app.json
+import Constants from "expo-constants";
 
-const APP_VERSION = Constants.expoConfig?.version || "1.0.0"; // Récupère la version depuis app.json ou valeur par défaut
+const APP_VERSION = Constants.expoConfig?.version || "1.0.0";
 
 const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, subscriptionEndDate, role }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -188,6 +188,15 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
             <Text style={styles.buttonText}>Valider le changement</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {role === "admin" && (
+        <TouchableOpacity
+          style={[styles.button, { marginTop: 20 }]} // Espacement ajouté ici
+          onPress={() => navigation.navigate("Admin")}
+        >
+          <Text style={styles.buttonText}>Administration</Text>
+        </TouchableOpacity>
       )}
 
       <View style={{ flex: 1 }} />
