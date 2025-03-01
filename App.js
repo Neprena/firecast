@@ -12,10 +12,10 @@ import LoginScreen from "./screens/LoginScreen";
 import MessagesScreen from "./screens/MessagesScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import AdminScreen from "./screens/AdminScreen";
-import EditUserScreen from "./screens/EditUserScreen"; // Ajout de l’importation
+import EditUserScreen from "./screens/EditUserScreen";
 import { lightStyles, darkStyles } from "./styles";
 
-const API_URL = "http://84.234.18.3:3001";
+const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = Constants.expoConfig?.extra?.apiKey || "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 const Stack = createNativeStackNavigator();
 
@@ -116,32 +116,11 @@ export default function App() {
   };
 
   const handleLogin = async () => {
-    try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Invalid credentials or API key");
-      console.log("Connexion réussie :", json);
-      await AsyncStorage.setItem("email", email);
-      await AsyncStorage.setItem("subscriptionEndDate", json.subscriptionEndDate || "");
-      await AsyncStorage.setItem("role", json.role || "normal");
-      setIsLoggedIn(true);
-      setSubscriptionEndDate(json.subscriptionEndDate);
-      setRole(json.role);
-      fetchMessages();
-      if (expoPushToken && notificationsEnabled) {
-        console.log("Token disponible après connexion, enregistrement...");
-        await registerPushToken(email);
-      }
-    } catch (error) {
-      console.warn("Erreur de connexion :", error.message);
-      alert("Erreur", "Email, mot de passe ou clé API incorrect.");
+    setIsLoggedIn(true);
+    console.log(`[${new Date().toLocaleString()}] handleLogin appelé, isLoggedIn mis à jour à true`);
+    if (expoPushToken && notificationsEnabled && email) {
+      console.log("Token disponible après connexion, enregistrement...");
+      await registerPushToken(email);
     }
   };
 
@@ -296,9 +275,9 @@ export default function App() {
                 <LoginScreen
                   {...props}
                   email={email}
-                  setEmail={setEmail}
+                  setEmail={setEmail} // Passé directement depuis l’état de App.js
                   password={password}
-                  setPassword={setPassword}
+                  setPassword={setPassword} // Passé directement depuis l’état de App.js
                   handleLogin={handleLogin}
                   styles={styles}
                   isConnected={isConnected}
@@ -317,7 +296,7 @@ export default function App() {
                     isConnected={isConnected}
                     subscriptionEndDate={subscriptionEndDate}
                     role={role}
-                    email={email} // Ajouté ici
+                    email={email}
                   />
                 )}
               </Stack.Screen>

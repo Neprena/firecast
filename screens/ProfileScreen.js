@@ -56,7 +56,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
     setLoading(true);
     try {
-      const response = await fetch("http://84.234.18.3:3001/change-password", {
+      const response = await fetch("https://api.ecascan.npna.ch/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,7 +98,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
   const handleSubscribe = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://84.234.18.3:3001/subscribe", {
+      const response = await fetch("https://api.ecascan.npna.ch/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -130,15 +130,16 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>ECAScanPhone</Text>
-      <Text style={styles.versionText}>Version {APP_VERSION}</Text>
+      <Text style={styles.subtitle}>Version {APP_VERSION}</Text>
       <Text style={styles.subtitle}>Profil</Text>
-      <Text style={styles.info}>Utilisateur: {email}</Text>
-      <Text style={styles.info}>Statut: Connecté</Text>
-      <Text style={styles.info}>Rôle: {role}</Text>
-      <Text style={[styles.info, { color: isConnected ? "green" : "red" }]}>
+      <Text style={styles.subtitle}>Utilisateur: {email}</Text>
+      <Text style={styles.subtitle}>Statut: Connecté</Text>
+      <Text style={styles.subtitle}>Rôle: {role}</Text>
+      <Text style={[styles.subtitle, { color: isConnected ? "green" : "red" }]}>
         Serveur : {isConnected ? "Connecté ✅" : "Déconnecté ❌"}
       </Text>
-      <Text style={styles.info}>Abonnement: {subscriptionStatus}</Text>
+      <Text style={styles.subtitle}>Abonnement: {subscriptionStatus}</Text>
+
       {isSubscriptionExpired && (
         <TouchableOpacity style={styles.button} onPress={handleSubscribe}>
           <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
@@ -151,15 +152,18 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
           <Text style={styles.buttonText}>Se réabonner</Text>
         </TouchableOpacity>
       )}
-      <View style={styles.notificationToggle}>
-        <Text style={styles.notificationLabel}>Activer les notifications</Text>
-        <Switch
-          value={notificationsEnabled}
-          onValueChange={toggleNotifications}
-          trackColor={{ false: "#767577", true: "#81b0ff" }}
-          thumbColor={notificationsEnabled ? "#007BFF" : "#f4f3f4"}
-          style={styles.switchStyle}
-        />
+
+      <View style={styles.toggleContainer}>
+        <View style={styles.toggleRow}>
+          <Icon name="notifications" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
+          <Text style={styles.toggleLabel}>Activer les notifications</Text>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={toggleNotifications}
+            trackColor={{ false: "#767577", true: "#81b0ff" }}
+            thumbColor={notificationsEnabled ? "#007BFF" : "#f4f3f4"}
+          />
+        </View>
       </View>
 
       <TouchableOpacity
@@ -235,7 +239,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={styles.button.backgroundColor} />
         </View>
       )}
     </SafeAreaView>
