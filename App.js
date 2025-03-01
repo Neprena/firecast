@@ -317,6 +317,7 @@ export default function App() {
                     isConnected={isConnected}
                     subscriptionEndDate={subscriptionEndDate}
                     role={role}
+                    email={email} // Ajouté ici
                   />
                 )}
               </Stack.Screen>

@@ -1,9 +1,19 @@
 import { StyleSheet } from "react-native";
 
+// Palette de couleurs cohérente
+const COLORS = {
+  primary: "#007BFF", // Bleu principal pour actions
+  secondary: "#6c757d", // Gris pour actions secondaires
+  danger: "#dc3545", // Rouge pour suppression
+  background: "#ffffff", // Fond clair
+  text: "#000000", // Texte principal
+  success: "#28a745", // Vert pour succès
+};
+
 export const lightStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.background,
     alignItems: "center",
     padding: 20,
   },
@@ -11,13 +21,13 @@ export const lightStyles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     marginBottom: 5,
-    color: "#000000",
+    color: COLORS.text,
   },
   subtitle: {
     fontSize: 24,
     fontWeight: "normal",
     marginBottom: 20,
-    color: "#000000",
+    color: COLORS.text,
   },
   input: {
     width: "100%",
@@ -27,34 +37,44 @@ export const lightStyles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 8,
     backgroundColor: "#f5f5f5",
-    color: "#000000",
+    color: COLORS.text,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   button: {
-    backgroundColor: "#007BFF",
+    backgroundColor: COLORS.primary,
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
     width: "100%",
+    flexDirection: "row",
+    justifyContent: "center",
   },
   buttonText: {
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
   },
+  buttonIcon: {
+    marginRight: 8,
+  },
   message: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#f0f0f0", // Fond gris clair par défaut
     padding: 12,
-    marginVertical: 5,
+    marginVertical: 5, // Séparation verticale
     borderRadius: 8,
     width: "100%",
   },
   messageText: {
-    color: "#000000",
+    color: COLORS.text,
   },
   info: {
     fontSize: 16,
     marginBottom: 10,
-    color: "#000000",
+    color: COLORS.text,
   },
   profileButton: {
     marginTop: 20,
@@ -65,12 +85,15 @@ export const lightStyles = StyleSheet.create({
   },
   secondaryButton: {
     marginTop: 20,
-    backgroundColor: "#888",
+    backgroundColor: COLORS.secondary,
     padding: 10,
     borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   warningBanner: {
-    backgroundColor: "#ff4444",
+    backgroundColor: COLORS.danger,
     padding: 10,
     width: "100%",
     alignItems: "center",
@@ -105,7 +128,7 @@ export const lightStyles = StyleSheet.create({
   },
   notificationLabel: {
     fontSize: 16,
-    color: "#000000",
+    color: COLORS.text,
     flexShrink: 1,
   },
   switchStyle: {
@@ -117,12 +140,14 @@ export const lightStyles = StyleSheet.create({
     marginVertical: 20,
   },
   logoutButton: {
-    backgroundColor: "#ff4444",
+    backgroundColor: COLORS.danger,
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
     width: "100%",
     marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "center",
   },
   versionText: {
     fontSize: 12,
@@ -167,7 +192,7 @@ export const lightStyles = StyleSheet.create({
   },
   modalContent: {
     width: "90%",
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.background,
     padding: 20,
     borderRadius: 8,
   },
@@ -205,20 +230,22 @@ export const lightStyles = StyleSheet.create({
     marginHorizontal: 2,
   },
   deleteButton: {
-    backgroundColor: "#ff4444",
+    backgroundColor: COLORS.danger,
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
     width: "100%",
     marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "center",
   },
-  roleSelector: { // Nouveau style pour les boutons radio
+  roleSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
     marginBottom: 12,
   },
-  roleButton: { // Style par défaut
+  roleButton: {
     flex: 1,
     backgroundColor: "#ccc",
     padding: 10,
@@ -226,8 +253,18 @@ export const lightStyles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 5,
   },
-  roleButtonSelected: { // Style quand sélectionné
-    backgroundColor: "#007BFF",
+  roleButtonSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  loadingContainer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
 });
 
@@ -327,5 +364,9 @@ export const darkStyles = {
   roleButtonSelected: {
     ...lightStyles.roleButtonSelected,
     backgroundColor: "#81b0ff",
+  },
+  loadingContainer: {
+    ...lightStyles.loadingContainer,
+    backgroundColor: "rgba(255,255,255,0.3)",
   },
 };

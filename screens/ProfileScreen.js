@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking } from "react-native";
+import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
 const APP_VERSION = Constants.expoConfig?.version || "1.0.0";
 
@@ -11,6 +12,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadNotificationSetting = async () => {
@@ -52,6 +54,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch("http://84.234.18.3:3001/change-password", {
         method: "POST",
@@ -87,10 +90,13 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
     } catch (error) {
       console.error("Erreur dans handleChangePassword :", error.message);
       Alert.alert("Erreur", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubscribe = async () => {
+    setLoading(true);
     try {
       const response = await fetch("http://84.234.18.3:3001/subscribe", {
         method: "POST",
@@ -105,6 +111,8 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
       Linking.openURL(json.checkoutUrl);
     } catch (error) {
       Alert.alert("Erreur", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -133,11 +141,13 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
       <Text style={styles.info}>Abonnement: {subscriptionStatus}</Text>
       {isSubscriptionExpired && (
         <TouchableOpacity style={styles.button} onPress={handleSubscribe}>
+          <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
           <Text style={styles.buttonText}>Se réabonner</Text>
         </TouchableOpacity>
       )}
       {role === "admin" && (
         <TouchableOpacity style={[styles.button, { backgroundColor: "#ccc" }]} disabled>
+          <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
           <Text style={styles.buttonText}>Se réabonner</Text>
         </TouchableOpacity>
       )}
@@ -156,6 +166,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
         style={styles.secondaryButton}
         onPress={() => setIsChangingPassword(!isChangingPassword)}
       >
+        <Icon name="lock" size={20} color="#fff" style={styles.buttonIcon} />
         <Text style={styles.buttonText}>
           {isChangingPassword ? "Annuler" : "Changer le mot de passe"}
         </Text>
@@ -163,28 +174,38 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
       {isChangingPassword && (
         <View style={styles.passwordChangeContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Ancien mot de passe"
-            secureTextEntry
-            value={oldPassword}
-            onChangeText={setOldPassword}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Nouveau mot de passe"
-            secureTextEntry
-            value={newPassword}
-            onChangeText={setNewPassword}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirmer le nouveau mot de passe"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
+          <View style={styles.input}>
+            <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={{ flex: 1 }}
+              placeholder="Ancien mot de passe"
+              secureTextEntry
+              value={oldPassword}
+              onChangeText={setOldPassword}
+            />
+          </View>
+          <View style={styles.input}>
+            <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={{ flex: 1 }}
+              placeholder="Nouveau mot de passe"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+          </View>
+          <View style={styles.input}>
+            <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={{ flex: 1 }}
+              placeholder="Confirmer le nouveau mot de passe"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+          </View>
           <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
+            <Icon name="save" size={20} color="#fff" style={styles.buttonIcon} />
             <Text style={styles.buttonText}>Valider le changement</Text>
           </TouchableOpacity>
         </View>
@@ -192,9 +213,10 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
       {role === "admin" && (
         <TouchableOpacity
-          style={[styles.button, { marginTop: 20 }]} // Espacement ajouté ici
+          style={[styles.button, { marginTop: 20 }]}
           onPress={() => navigation.navigate("Admin")}
         >
+          <Icon name="admin-panel-settings" size={20} color="#fff" style={styles.buttonIcon} />
           <Text style={styles.buttonText}>Administration</Text>
         </TouchableOpacity>
       )}
@@ -202,12 +224,20 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
       <View style={{ flex: 1 }} />
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Icon name="logout" size={20} color="#fff" style={styles.buttonIcon} />
         <Text style={styles.buttonText}>Se déconnecter</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Messages")}>
+        <Icon name="arrow-back" size={20} color="#fff" style={styles.buttonIcon} />
         <Text style={styles.buttonText}>Retour</Text>
       </TouchableOpacity>
+
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      )}
     </SafeAreaView>
   );
 };
