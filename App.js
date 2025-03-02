@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar, useColorScheme, AppState } from "react-native";
+import { StatusBar, useColorScheme, AppState } from "react-native"; // Linking supprimé
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -10,6 +10,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
 import MessagesScreen from "./screens/MessagesScreen";
+import MessageDetail from "./screens/MessageDetail";
 import ProfileScreen from "./screens/ProfileScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EditUserScreen from "./screens/EditUserScreen";
@@ -19,229 +20,65 @@ const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = Constants.expoConfig?.extra?.apiKey || "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 const Stack = createNativeStackNavigator();
 
-export default function App() {
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
-  const styles = isDarkMode ? darkStyles : lightStyles;
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
+const App = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [isConnected, setIsConnected] = useState(true);
-  const [expoPushToken, setExpoPushToken] = useState("");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
-  const [role, setRole] = useState("normal");
+  const [loading, setLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const isDarkMode = useColorScheme() === "dark";
+  const styles = isDarkMode ? darkStyles : lightStyles;
 
   useEffect(() => {
-    console.log("Initialisation de l’app...");
+    const checkLoginStatus = async () => {
+      try {
+        const storedEmail = await AsyncStorage.getItem("email");
+        if (storedEmail) {
+          setEmail(storedEmail);
+          await fetchUserInfo(storedEmail);
+        }
+      } catch (error) {
+        console.warn("Erreur lors de la vérification du statut de connexion :", error);
+      }
+    };
     checkLoginStatus();
-    loadNotificationSetting();
-    registerForPushNotifications();
-    loadCachedMessages();
-    fetchMessages();
+    registerForPushNotificationsAsync();
+  }, []);
 
-    const netInfoListener = NetInfo.addEventListener((state) => {
-      setIsConnected(state.isInternetReachable);
-      if (state.isInternetReachable) {
-        fetchMessages();
-        refreshUserInfo();
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const storedEmail = await AsyncStorage.getItem("email");
+        if (storedEmail && !isConnected) {
+          setEmail(storedEmail);
+          await fetchUserInfo(storedEmail);
+        }
+      } catch (error) {
+        console.warn("Erreur lors de la vérification du statut de connexion :", error);
       }
-    });
+    };
+    checkLoginStatus();
 
-    const backgroundSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      console.log("Notification reçue en arrière-plan :", response);
-      const data = response.notification.request.content.data || {};
-      if (data.type === "new_message" && isLoggedIn && notificationsEnabled) {
-        fetchMessages();
+    const interval = setInterval(() => {
+      if (isConnected && email) {
+        fetchUserInfo(email);
       }
-    });
-
-    const appStateListener = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active" && isLoggedIn) {
-        console.log("App revenue au premier plan, rechargement des messages et infos utilisateur...");
-        fetchMessages();
-        refreshUserInfo();
-      }
-    });
-
-    const intervalId = setInterval(() => {
-      if (isLoggedIn) {
-        refreshUserInfo();
-      }
-    }, 5 * 60 * 1000);
+    }, 60 * 100);
 
     return () => {
-      netInfoListener();
-      backgroundSubscription.remove();
-      appStateListener.remove();
-      clearInterval(intervalId);
+      clearInterval(interval); // Nettoyage uniquement de l’intervalle
     };
-  }, [isLoggedIn, notificationsEnabled]);
+  }, [isConnected, email]);
 
-  const loadNotificationSetting = async () => {
-    try {
-      const value = await AsyncStorage.getItem("notificationsEnabled");
-      if (value !== null) {
-        setNotificationsEnabled(JSON.parse(value));
-      }
-    } catch (error) {
-      console.warn("Erreur lors du chargement des paramètres de notification :", error);
-    }
-  };
-
-  const checkLoginStatus = async () => {
-    try {
-      const storedEmail = await AsyncStorage.getItem("email");
-      const storedSubscriptionEndDate = await AsyncStorage.getItem("subscriptionEndDate");
-      const storedRole = await AsyncStorage.getItem("role");
-
-      if (storedEmail) {
-        console.log("Email trouvé dans AsyncStorage :", storedEmail);
-        setEmail(storedEmail);
-        setSubscriptionEndDate(storedSubscriptionEndDate ? storedSubscriptionEndDate : null);
-        setRole(storedRole ? storedRole : "normal");
-        setIsLoggedIn(true);
-        fetchMessages();
-        if (expoPushToken && notificationsEnabled) {
-          console.log("Token existant, enregistrement pour :", storedEmail);
-          await registerPushToken(storedEmail);
-        }
-        await refreshUserInfo();
-      }
-    } catch (error) {
-      console.warn("Erreur lors de la vérification du statut de connexion :", error);
-    }
-  };
-
-  const handleLogin = async () => {
-    setIsLoggedIn(true);
-    console.log(`[${new Date().toLocaleString()}] handleLogin appelé, isLoggedIn mis à jour à true`);
-    if (expoPushToken && notificationsEnabled && email) {
-      console.log("Token disponible après connexion, enregistrement...");
-      await registerPushToken(email);
-    }
-  };
-
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("email");
-    await AsyncStorage.removeItem("subscriptionEndDate");
-    await AsyncStorage.removeItem("role");
-    setIsLoggedIn(false);
-    setEmail("");
-    setPassword("");
-    setSubscriptionEndDate(null);
-    setRole("normal");
-    console.log("Déconnexion effectuée");
-  };
-
-  const registerForPushNotifications = async () => {
-    if (!Device.isDevice) {
-      console.warn("Notifications push non disponibles sur simulateur");
-      return;
-    }
-    if (!notificationsEnabled) {
-      console.log("Notifications désactivées, pas de génération de token");
-      return;
-    }
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      console.log("Statut des permissions actuel :", existingStatus);
-      let finalStatus = existingStatus;
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-        console.log("Nouveau statut des permissions :", finalStatus);
-      }
-      if (finalStatus !== "granted") {
-        console.warn("Permissions de notification non accordées");
-        return;
-      }
-      const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
-      console.log("Expo Push Token généré :", token);
-      setExpoPushToken(token);
-      if (email) {
-        console.log("Email disponible, enregistrement du token pour :", email);
-        await registerPushToken(email);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la génération du token push :", error);
-    }
-  };
-
-  const registerPushToken = async (userEmail) => {
-    if (!expoPushToken || !userEmail) {
-      console.warn("Token ou email manquant pour l’enregistrement :", { expoPushToken, userEmail });
-      return;
-    }
-    try {
-      const response = await fetch(`${API_URL}/register-token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify({ email: userEmail, token: expoPushToken }),
-      });
-      const json = await response.json();
-      if (response.ok) {
-        console.log("Token enregistré avec succès :", json);
-      } else {
-        console.warn("Échec de l’enregistrement du token :", json);
-      }
-    } catch (error) {
-      console.warn("Erreur lors de l’enregistrement du token :", error);
-    }
-  };
-
-  const loadCachedMessages = async () => {
-    try {
-      const cachedMessages = await AsyncStorage.getItem("messages");
-      if (cachedMessages) {
-        setMessages(JSON.parse(cachedMessages));
-        console.log("Messages chargés depuis le cache");
-      }
-    } catch (error) {
-      console.warn("Erreur lors du chargement des messages en cache :", error);
-    }
-  };
-
-  const fetchMessages = async () => {
-    if (!email) {
-      console.warn("Aucun email disponible pour fetchMessages");
-      return;
-    }
-    try {
-      const response = await fetch(`${API_URL}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify({ email }),
-      });
-      if (!response.ok) {
-        const json = await response.json();
-        throw new Error(json.error || "Server unreachable or invalid API key");
-      }
-      const data = await response.json();
-      setMessages(data);
-      await AsyncStorage.setItem("messages", JSON.stringify(data));
-      setIsConnected(true);
-      console.log("Messages récupérés avec succès :", data.length);
-    } catch (error) {
-      setIsConnected(false);
-      loadCachedMessages();
-      console.warn("Erreur lors de la récupération des messages :", error);
-      if (error.message === "Abonnement expiré") {
-        alert("Erreur", "Votre abonnement a expiré. Veuillez vous réabonner.");
-      }
-    }
-  };
-
-  const refreshUserInfo = async () => {
-    if (!email) return;
+  const fetchUserInfo = async (userEmail) => {
     try {
       const response = await fetch(`${API_URL}/user-info`, {
         method: "POST",
@@ -249,91 +86,178 @@ export default function App() {
           "Content-Type": "application/json",
           "x-api-key": API_KEY,
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: userEmail }),
       });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Erreur lors de la récupération des infos utilisateur");
-
-      setSubscriptionEndDate(json.subscriptionEndDate);
-      setRole(json.role);
-      await AsyncStorage.setItem("subscriptionEndDate", json.subscriptionEndDate || "");
-      await AsyncStorage.setItem("role", json.role || "normal");
-      console.log("Infos utilisateur rafraîchies :", { role: json.role, subscriptionEndDate: json.subscriptionEndDate });
+      if (response.ok) {
+        setUserData({
+          email: json.email,
+          subscriptionEndDate: json.subscriptionEndDate,
+          role: json.role,
+          isActive: json.isActive,
+        });
+        setIsConnected(true);
+      } else {
+        throw new Error(json.error || "Erreur lors de la récupération des informations utilisateur");
+      }
     } catch (error) {
-      console.warn("Erreur lors du rafraîchissement des infos utilisateur :", error.message);
+      console.warn("Erreur dans fetchUserInfo :", error.message);
+      setIsConnected(false);
+    }
+  };
+
+  const handleLogin = async (loginEmail, loginPassword) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Erreur de connexion");
+      await AsyncStorage.setItem("email", loginEmail);
+      setUserData({
+        email: json.email,
+        subscriptionEndDate: json.subscriptionEndDate,
+        role: json.role,
+        isActive: json.isActive,
+      });
+      setEmail(loginEmail);
+      setPassword(loginPassword);
+      setIsConnected(true);
+    } catch (error) {
+      Alert.alert("Erreur", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setLoading(true);
+    try {
+      await AsyncStorage.removeItem("email");
+      setEmail("");
+      setPassword("");
+      setUserData(null);
+      setIsConnected(false);
+    } catch (error) {
+      Alert.alert("Erreur", "Erreur lors de la déconnexion");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (!userData?.email) return [];
+    try {
+      const response = await fetch(`${API_URL}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({ email: userData.email }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Erreur lors de la récupération des messages");
+      return json;
+    } catch (error) {
+      console.warn("Erreur dans fetchMessages :", error.message);
+      return [];
+    }
+  };
+
+  const registerForPushNotificationsAsync = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") {
+        console.warn("Permission de notification non accordée");
+        return;
+      }
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
+      if (userData?.email) {
+        await fetch(`${API_URL}/register-token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEY,
+          },
+          body: JSON.stringify({ email: userData.email, token }),
+        });
+      }
+    } catch (error) {
+      console.warn("Erreur dans registerForPushNotificationsAsync :", error);
     }
   };
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!isLoggedIn ? (
-            <Stack.Screen name="Login">
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: isDarkMode ? "#121212" : "#fff" },
+        }}
+      >
+        {isConnected ? (
+          <>
+            <Stack.Screen name="Messages">
               {(props) => (
-                <LoginScreen
+                <MessagesScreen
                   {...props}
-                  email={email}
-                  setEmail={setEmail} // Passé directement depuis l’état de App.js
-                  password={password}
-                  setPassword={setPassword} // Passé directement depuis l’état de App.js
-                  handleLogin={handleLogin}
                   styles={styles}
+                  fetchMessages={fetchMessages}
                   isConnected={isConnected}
+                  subscriptionEndDate={userData?.subscriptionEndDate}
+                  role={userData?.role}
+                  email={userData?.email}
                 />
               )}
             </Stack.Screen>
-          ) : (
-            <>
-              <Stack.Screen name="Messages">
-                {(props) => (
-                  <MessagesScreen
-                    {...props}
-                    messages={messages}
-                    fetchMessages={fetchMessages}
-                    styles={styles}
-                    isConnected={isConnected}
-                    subscriptionEndDate={subscriptionEndDate}
-                    role={role}
-                    email={email}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Profile">
-                {(props) => (
-                  <ProfileScreen
-                    {...props}
-                    email={email}
-                    handleLogout={handleLogout}
-                    styles={styles}
-                    isConnected={isConnected}
-                    subscriptionEndDate={subscriptionEndDate}
-                    role={role}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="Admin">
-                {(props) => (
-                  <AdminScreen
-                    {...props}
-                    email={email}
-                    styles={styles}
-                  />
-                )}
-              </Stack.Screen>
-              <Stack.Screen name="EditUser">
-                {(props) => (
-                  <EditUserScreen
-                    {...props}
-                    styles={styles}
-                  />
-                )}
-              </Stack.Screen>
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+            <Stack.Screen name="Profile">
+              {(props) => (
+                <ProfileScreen
+                  {...props}
+                  styles={styles}
+                  email={userData.email}
+                  handleLogout={handleLogout}
+                  isConnected={isConnected}
+                  subscriptionEndDate={userData.subscriptionEndDate}
+                  role={userData.role}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Admin">
+              {(props) => <AdminScreen {...props} styles={styles} email={userData.email} />}
+            </Stack.Screen>
+            <Stack.Screen name="EditUser">
+              {(props) => <EditUserScreen {...props} styles={styles} />}
+            </Stack.Screen>
+            <Stack.Screen name="MessageDetail">
+              {(props) => <MessageDetail {...props} styles={styles} />}
+            </Stack.Screen>
+          </>
+        ) : (
+          <Stack.Screen name="Login">
+            {(props) => (
+              <LoginScreen
+                {...props}
+                setEmail={setEmail}
+                setPassword={setPassword}
+                handleLogin={handleLogin}
+                styles={styles}
+              />
+            )}
+          </Stack.Screen>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
-}
+};
+
+export default App;

@@ -1,40 +1,26 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from "react-native";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
-const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setParentPassword, handleLogin }) => {
+const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setParentPassword, handleLogin, styles }) => {
   const [email, setLocalEmail] = useState("");
   const [password, setLocalPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const API_URL = "https://api.ecascan.npna.ch";
-  const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
-
   const performLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Erreur", "Veuillez entrer un email et un mot de passe.");
+      return;
+    }
     setLoading(true);
     try {
-      console.log(`[${new Date().toLocaleString()}] Tentative de connexion pour ${email} vers ${API_URL}/login`);
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      console.log(`[${new Date().toLocaleString()}] Réponse serveur : statut ${response.status}`);
-      
-      const json = await response.json();
-      if (!response.ok) {
-        console.error(`[${new Date().toLocaleString()}] Erreur serveur : ${json.error || "Erreur inconnue"}, statut: ${response.status}`);
-        throw new Error(json.error || "Erreur lors de la connexion");
-      }
-
-      console.log(`[${new Date().toLocaleString()}] Connexion réussie pour ${email}`);
+      console.log(`[${new Date().toLocaleString()}] Tentative de connexion pour ${email}`);
+      await handleLogin(email, password);
       setParentEmail(email);
-      setParentPassword("");
-      handleLogin();
+      setParentPassword(password);
+      console.log(`[${new Date().toLocaleString()}] Connexion réussie pour ${email}`);
     } catch (error) {
-      console.error(`[${new Date().toLocaleString()}] Échec de la connexion : ${error.message}, détails : ${error.stack || "Aucun détail supplémentaire"}`);
+      console.error(`[${new Date().toLocaleString()}] Échec de la connexion : ${error.message}`);
       Alert.alert("Erreur", error.message || "Erreur lors de la connexion");
     } finally {
       setLoading(false);
@@ -42,77 +28,56 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Connexion à ECAScanPhone</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setLocalEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
+    <SafeAreaView style={styles.container}>
+      <Image
+        source={require('../assets/logo.png')} // Corrigé le chemin si à la racine
+        style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }}
       />
       
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        value={password}
-        onChangeText={setLocalPassword}
-        secureTextEntry
-      />
+      <View style={styles.input}>
+        <Icon name="email" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={{ flex: 1 }}
+          placeholder="Email"
+          value={email}
+          onChangeText={setLocalEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </View>
+      
+      <View style={styles.input}>
+        <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={{ flex: 1 }}
+          placeholder="Mot de passe"
+          value={password}
+          onChangeText={setLocalPassword}
+          secureTextEntry
+        />
+      </View>
       
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[styles.button, loading && { backgroundColor: "#aaa" }]}
         onPress={performLogin}
         disabled={loading}
       >
+        <Icon name="login" size={20} color="#fff" style={styles.buttonIcon} />
         {loading ? (
           <ActivityIndicator size="small" color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Se connecter</Text>
+          <Text
+            style={styles.buttonText}
+            allowFontScaling={false}
+            numberOfLines={1}
+            ellipsizeMode="none"
+          >
+            Se connecter
+          </Text>
         )}
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-    backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-    color: "#333",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 12,
-    marginBottom: 15,
-    borderRadius: 8,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    backgroundColor: "#aaa",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});
 
 export default LoginScreen;

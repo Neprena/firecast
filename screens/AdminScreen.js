@@ -149,51 +149,100 @@ const AdminScreen = ({ navigation, styles, email }) => {
         />
       </View>
       <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, roleFilter === "" && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setRoleFilter("")}
-        >
-          <Text style={styles.buttonText}>Tous</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, roleFilter === "normal" && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setRoleFilter("normal")}
-        >
-          <Text style={styles.buttonText}>Normal</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, roleFilter === "VIP" && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setRoleFilter("VIP")}
-        >
-          <Text style={styles.buttonText}>VIP</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, roleFilter === "admin" && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setRoleFilter("admin")}
-        >
-          <Text style={styles.buttonText}>Admin</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, activeFilter === null && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setActiveFilter(null)}
-        >
-          <Text style={styles.buttonText}>Tous</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, activeFilter === true && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setActiveFilter(true)}
-        >
-          <Text style={styles.buttonText}>Actif</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, activeFilter === false && { backgroundColor: styles.button.backgroundColor }]}
-          onPress={() => setActiveFilter(false)}
-        >
-          <Text style={styles.buttonText}>Inactif</Text>
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity
+    style={[styles.filterButton, roleFilter === "" && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setRoleFilter("")}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      Tous
+    </Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[styles.filterButton, roleFilter === "normal" && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setRoleFilter("normal")}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      Normal
+    </Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[styles.filterButton, roleFilter === "VIP" && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setRoleFilter("VIP")}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      VIP
+    </Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[styles.filterButton, roleFilter === "admin" && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setRoleFilter("admin")}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      Admin
+    </Text>
+  </TouchableOpacity>
+</View>
+<View style={styles.filterContainer}>
+  <TouchableOpacity
+    style={[styles.filterButton, activeFilter === null && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setActiveFilter(null)}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      Tous
+    </Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[styles.filterButton, activeFilter === true && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setActiveFilter(true)}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      Actif
+    </Text>
+  </TouchableOpacity>
+  <TouchableOpacity
+    style={[styles.filterButton, activeFilter === false && { backgroundColor: styles.button.backgroundColor }]}
+    onPress={() => setActiveFilter(false)}
+  >
+    <Text
+      style={[styles.buttonText, { width: 100 }]}
+      allowFontScaling={false}
+      numberOfLines={1}
+      ellipsizeMode="none"
+    >
+      Inactif
+    </Text>
+  </TouchableOpacity>
+</View>
 
       <TouchableOpacity style={styles.button} onPress={() => setIsAdding(!isAdding)}>
         <Icon name={isAdding ? "close" : "person-add"} size={20} color="#fff" style={styles.buttonIcon} />
