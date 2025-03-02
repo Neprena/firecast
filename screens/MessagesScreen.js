@@ -18,18 +18,33 @@ const MessagesScreen = ({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allMessages, setAllMessages] = useState([]);
+  const [notificationSettings, setNotificationSettings] = useState({
+    debug: false,
+    info: true,
+    prioritaire: false,
+  });
+  const [messageFilters, setMessageFilters] = useState({
+    debug: false,
+    info: true,
+    prioritaire: false,
+  });
   const soundRef = useRef(null);
   const isFocused = useRef(true);
 
   const isSubscriptionExpired = role !== "admin" && (!subscriptionEndDate || new Date(subscriptionEndDate) < new Date());
+  const canSeeDebug = role && role.toLowerCase() === "admin";
+  const canSeePrioritaire = role && (role.toLowerCase() === "vip" || role.toLowerCase() === "admin");
+  const canSeeInfo = true;
 
   useEffect(() => {
     loadMessagesFromStorage();
+    loadNotificationSettings();
+    loadMessageFilters();
 
     const loadSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(
-          require("../assets/notification.mp3"), // Chemin corrigé
+          require("../assets/notification.mp3"),
           { shouldPlay: false }
         );
         soundRef.current = sound;
@@ -58,24 +73,97 @@ const MessagesScreen = ({
     };
   }, [navigation]);
 
+  const loadNotificationSettings = async () => {
+    try {
+      const storedSettings = await AsyncStorage.getItem("notificationSettings");
+      if (storedSettings) {
+        const parsedSettings = JSON.parse(storedSettings);
+        setNotificationSettings({
+          debug: canSeeDebug ? (parsedSettings.debug || false) : false,
+          info: canSeeInfo ? (parsedSettings.info !== undefined ? parsedSettings.info : true) : false,
+          prioritaire: canSeePrioritaire ? (parsedSettings.prioritaire || false) : false,
+        });
+        console.log(`[${new Date().toLocaleString()}] Paramètres de notifications chargés :`, parsedSettings);
+      } else {
+        const defaultSettings = {
+          debug: canSeeDebug ? true : false,
+          info: canSeeInfo ? true : false,
+          prioritaire: canSeePrioritaire ? true : false,
+        };
+        await AsyncStorage.setItem("notificationSettings", JSON.stringify(defaultSettings));
+        setNotificationSettings(defaultSettings);
+        console.log(`[${new Date().toLocaleString()}] Paramètres de notifications initialisés par défaut`);
+      }
+    } catch (error) {
+      console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres de notifications : ${error.message}`);
+    }
+  };
+
+  const loadMessageFilters = async () => {
+    try {
+      const storedFilters = await AsyncStorage.getItem("messageFilters");
+      if (storedFilters) {
+        const parsedFilters = JSON.parse(storedFilters);
+        setMessageFilters({
+          debug: canSeeDebug ? (parsedFilters.debug || false) : false,
+          info: canSeeInfo ? (parsedFilters.info !== undefined ? parsedFilters.info : true) : false,
+          prioritaire: canSeePrioritaire ? (parsedFilters.prioritaire || false) : false,
+        });
+        console.log(`[${new Date().toLocaleString()}] Filtres de messages chargés :`, parsedFilters);
+      } else {
+        const defaultFilters = {
+          debug: canSeeDebug ? true : false,
+          info: canSeeInfo ? true : false,
+          prioritaire: canSeePrioritaire ? true : false,
+        };
+        await AsyncStorage.setItem("messageFilters", JSON.stringify(defaultFilters));
+        setMessageFilters(defaultFilters);
+        console.log(`[${new Date().toLocaleString()}] Filtres de messages initialisés par défaut`);
+      }
+    } catch (error) {
+      console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des filtres de messages : ${error.message}`);
+    }
+  };
+
+  const toggleFilter = async (type) => {
+    const newFilters = { ...messageFilters, [type]: !messageFilters[type] };
+    setMessageFilters(newFilters);
+    try {
+      await AsyncStorage.setItem("messageFilters", JSON.stringify(newFilters));
+      console.log(`[${new Date().toLocaleString()}] Filtre ${type} mis à jour : ${newFilters[type]}`);
+    } catch (error) {
+      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour des filtres : ${error.message}`);
+    }
+  };
+
   const loadMessagesFromStorage = async () => {
     setLoading(true);
     try {
       const storedMessages = await AsyncStorage.getItem("messages");
+      let messagesToSet = [];
       if (storedMessages) {
-        const parsedMessages = JSON.parse(storedMessages).map(msg => ({
+        messagesToSet = JSON.parse(storedMessages).map(msg => ({
           ...msg,
           fadeAnim: new Animated.Value(1),
         }));
-        console.log(`[${new Date().toLocaleString()}] Messages chargés depuis AsyncStorage : ${parsedMessages.length} messages`);
-        setAllMessages(parsedMessages);
+        console.log(`[${new Date().toLocaleString()}] Messages chargés depuis AsyncStorage : ${messagesToSet.length} messages`);
       } else {
         console.log(`[${new Date().toLocaleString()}] Aucun message trouvé dans AsyncStorage`);
       }
-      fetchMessages();
+
+      const fetchedMessages = await fetchMessages();
+      if (fetchedMessages && Array.isArray(fetchedMessages)) {
+        messagesToSet = fetchedMessages.map(msg => ({
+          ...msg,
+          fadeAnim: new Animated.Value(1),
+        }));
+        console.log(`[${new Date().toLocaleString()}] Messages récupérés via fetchMessages : ${messagesToSet.length} messages`);
+        await AsyncStorage.setItem("messages", JSON.stringify(messagesToSet));
+      }
+
+      setAllMessages(messagesToSet);
     } catch (error) {
-      console.error(`[${new Date().toLocaleString()}] Erreur lors du chargement depuis AsyncStorage : ${error.message}`);
-      fetchMessages();
+      console.error(`[${new Date().toLocaleString()}] Erreur lors du chargement des messages : ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -89,6 +177,24 @@ const MessagesScreen = ({
       isNew: true,
     };
 
+    if (isSubscriptionExpired) {
+      console.log(`[${new Date().toLocaleString()}] Message reçu mais ignoré (abonnement expiré) : ${newMessage.message}, type: ${newMessage.type}`);
+      return;
+    }
+
+    const shouldNotify =
+      (newMessage.type === "Debug" && notificationSettings.debug && canSeeDebug) ||
+      (newMessage.type === "Info" && notificationSettings.info && canSeeInfo) ||
+      (newMessage.type === "Prioritaire" && notificationSettings.prioritaire && canSeePrioritaire);
+
+    console.log(`[${new Date().toLocaleString()}] Évaluation de shouldNotify pour ${newMessage.type} :`, {
+      shouldNotify,
+      notificationSettings,
+      canSeeDebug,
+      canSeeInfo,
+      canSeePrioritaire,
+    });
+
     setAllMessages((prevMessages) => {
       const updatedMessages = [animatedMessage, ...prevMessages];
       console.log(`[${new Date().toLocaleString()}] Nouveau message reçu via WebSocket : ${newMessage.message}, type: ${newMessage.type}`);
@@ -100,13 +206,15 @@ const MessagesScreen = ({
       return updatedMessages;
     });
 
-    if (isFocused.current && soundRef.current) {
+    if (isFocused.current && soundRef.current && shouldNotify) {
       try {
         await soundRef.current.replayAsync();
-        console.log(`[${new Date().toLocaleString()}] Son de notification joué`);
+        console.log(`[${new Date().toLocaleString()}] Son de notification joué pour ${newMessage.type}`);
       } catch (error) {
         console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
       }
+    } else {
+      console.log(`[${new Date().toLocaleString()}] Pas de son joué pour ${newMessage.type} (shouldNotify: ${shouldNotify})`);
     }
 
     Animated.timing(animatedMessage.fadeAnim, {
@@ -120,16 +228,21 @@ const MessagesScreen = ({
     setSearchQuery(text);
   };
 
-  const filteredMessages = allMessages.filter((msg) =>
-    msg.message.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredMessages = allMessages.filter((msg) => {
+    const matchesSearch = msg.message.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType =
+      (msg.type === "Debug" && messageFilters.debug && canSeeDebug) ||
+      (msg.type === "Info" && messageFilters.info && canSeeInfo) ||
+      (msg.type === "Prioritaire" && messageFilters.prioritaire && canSeePrioritaire);
+    return matchesSearch && matchesType;
+  });
 
   const getMessageBackgroundColor = (type) => {
     switch (type) {
-      case "Debug": return "#F5F5F5";
-      case "Info": return "#f0f0f0";
-      case "Prioritaire": return "#FFA500";
-      default: return "#f0f0f0";
+      case "Debug": return "#9dffc7"; // Vert clair
+      case "Info": return "#f0f0f0";  // Gris clair
+      case "Prioritaire": return "#ff9d9d"; // Rouge clair
+      default: return "#f0f0f0";     // Gris clair
     }
   };
 
@@ -221,6 +334,39 @@ const MessagesScreen = ({
         </View>
       ) : (
         <>
+          <View style={{ flexDirection: "row", marginVertical: 10, paddingHorizontal: 10 }}>
+            {canSeeInfo && (
+              <TouchableOpacity
+                style={[styles.messageFilterButton, messageFilters.info ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleFilter("info")}
+              >
+                <Text style={[styles.messageFilterText, messageFilters.info ? styles.messageFilterTextActive : {}]}>
+                  Info
+                </Text>
+              </TouchableOpacity>
+            )}
+            {canSeePrioritaire && (
+              <TouchableOpacity
+                style={[styles.messageFilterButton, messageFilters.prioritaire ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleFilter("prioritaire")}
+              >
+                <Text style={[styles.messageFilterText, messageFilters.prioritaire ? styles.messageFilterTextActive : {}]}>
+                  Prioritaire
+                </Text>
+              </TouchableOpacity>
+            )}
+            {canSeeDebug && (
+              <TouchableOpacity
+                style={[styles.messageFilterButton, messageFilters.debug ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleFilter("debug")}
+              >
+                <Text style={[styles.messageFilterText, messageFilters.debug ? styles.messageFilterTextActive : {}]}>
+                  Debug
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View style={styles.input}>
             <Icon name="search" size={20} color="#666" style={styles.inputIcon} />
             <TextInput
@@ -237,7 +383,7 @@ const MessagesScreen = ({
             renderItem={renderMessage}
             ListEmptyComponent={<Text style={styles.info}>Aucun message</Text>}
             refreshing={loading}
-            onRefresh={fetchMessages}
+            onRefresh={loadMessagesFromStorage}
             contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
           />
 

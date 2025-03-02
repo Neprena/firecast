@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar, useColorScheme, AppState } from "react-native"; // Linking supprimé
+import { StatusBar, useColorScheme, AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -14,18 +14,30 @@ import MessageDetail from "./screens/MessageDetail";
 import ProfileScreen from "./screens/ProfileScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EditUserScreen from "./screens/EditUserScreen";
+import NotificationsSettingsScreen from "./screens/NotificationsSettingsScreen";
 import { lightStyles, darkStyles } from "./styles";
 
 const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = Constants.expoConfig?.extra?.apiKey || "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 const Stack = createNativeStackNavigator();
 
+// Configuration dynamique des notifications push
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async () => {
+    const storedSettings = await AsyncStorage.getItem("notificationSettings");
+    let settings = { debug: false, info: true, prioritaire: false }; // Valeurs par défaut
+    if (storedSettings) {
+      settings = JSON.parse(storedSettings);
+    }
+    const notificationsEnabled = settings.debug || settings.info || settings.prioritaire;
+    console.log(`[${new Date().toLocaleString()}] Gestion des notifications push - Enabled: ${notificationsEnabled}, Settings:`, settings);
+
+    return {
+      shouldShowAlert: notificationsEnabled,
+      shouldPlaySound: notificationsEnabled,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 const App = () => {
@@ -74,7 +86,7 @@ const App = () => {
     }, 60 * 100);
 
     return () => {
-      clearInterval(interval); // Nettoyage uniquement de l’intervalle
+      clearInterval(interval);
     };
   }, [isConnected, email]);
 
@@ -180,7 +192,23 @@ const App = () => {
         console.warn("Permission de notification non accordée");
         return;
       }
+
+      const storedSettings = await AsyncStorage.getItem("notificationSettings");
+      let notificationsEnabled = false;
+      if (storedSettings) {
+        const parsedSettings = JSON.parse(storedSettings);
+        notificationsEnabled = parsedSettings.debug || parsedSettings.info || parsedSettings.prioritaire;
+      } else {
+        notificationsEnabled = true; // Par défaut si non défini
+      }
+
+      if (!notificationsEnabled) {
+        console.log("Toutes les notifications sont désactivées, pas d'enregistrement du token push");
+        return;
+      }
+
       const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
+      console.log("ExpoPushToken :", token);
       if (userData?.email) {
         await fetch(`${API_URL}/register-token`, {
           method: "POST",
@@ -240,6 +268,15 @@ const App = () => {
             </Stack.Screen>
             <Stack.Screen name="MessageDetail">
               {(props) => <MessageDetail {...props} styles={styles} />}
+            </Stack.Screen>
+            <Stack.Screen name="NotificationsSettings">
+              {(props) => (
+                <NotificationsSettingsScreen
+                  {...props}
+                  styles={styles}
+                  role={userData?.role}
+                />
+              )}
             </Stack.Screen>
           </>
         ) : (

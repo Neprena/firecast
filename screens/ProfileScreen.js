@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator, Image } from "react-native"; // Ajouté Image
+import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator, Image } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -29,16 +29,6 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
     };
     loadNotificationSetting();
   }, []);
-
-  const toggleNotifications = async (value) => {
-    try {
-      setNotificationsEnabled(value);
-      await AsyncStorage.setItem("notificationsEnabled", JSON.stringify(value));
-      console.log("Notifications mises à jour :", value);
-    } catch (error) {
-      console.warn("Erreur lors de la mise à jour des notifications :", error);
-    }
-  };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -131,12 +121,14 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
     <SafeAreaView style={styles.container}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
         <Image
-          source={require('../assets/logo.png')} // Chemin vers ton logo
-          style={{ width: 100, height: 100}} // Petit logo
+          source={require('../assets/logo.png')}
+          style={{ width: 100, height: 100}}
         />
-        
       </View>
+      <Text style={styles.subtitle}>Version {APP_VERSION}</Text>
+      <Text style={styles.title}>Profil</Text>
       <Text style={styles.subtitle}>Utilisateur: {email}</Text>
+      <Text style={styles.subtitle}>Statut: Connecté</Text>
       <Text style={styles.subtitle}>Rôle: {role}</Text>
       <Text style={[styles.subtitle, { color: isConnected ? "green" : "red" }]}>
         Serveur : {isConnected ? "Connecté ✅" : "Déconnecté ❌"}
@@ -170,18 +162,20 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
         </TouchableOpacity>
       )}
 
-      <View style={styles.toggleContainer}>
-        <View style={styles.toggleRow}>
-          <Icon name="notifications" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-          <Text style={styles.toggleLabel}>Activer les notifications</Text>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={toggleNotifications}
-            trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={notificationsEnabled ? "#007BFF" : "#f4f3f4"}
-          />
-        </View>
-      </View>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={() => navigation.navigate("NotificationsSettings")}
+      >
+        <Icon name="notifications" size={20} color="#fff" style={styles.buttonIcon} />
+        <Text
+          style={styles.buttonText}
+          allowFontScaling={false}
+          numberOfLines={1}
+          ellipsizeMode="none"
+        >
+          Paramètres notifications
+        </Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.secondaryButton}
