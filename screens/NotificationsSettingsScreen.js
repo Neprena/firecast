@@ -3,6 +3,9 @@ import { SafeAreaView, View, Text, TouchableOpacity, Switch, Alert, ActivityIndi
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
+const API_URL = "https://api.ecascan.npna.ch";
+const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
+
 const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
   const [loading, setLoading] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
@@ -12,7 +15,6 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
   });
 
   useEffect(() => {
-    console.log(`[${new Date().toLocaleString()}] useEffect déclenché avec rôle : ${role}`);
     const loadSettings = async () => {
       setLoading(true);
       try {
@@ -28,19 +30,18 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
             info: canSeeInfo ? (parsedSettings.info !== undefined ? parsedSettings.info : true) : false,
             prioritaire: canSeePrioritaire ? (parsedSettings.prioritaire || false) : false,
           });
-          console.log(`[${new Date().toLocaleString()}] Paramètres chargés pour rôle ${role}:`, parsedSettings);
         } else {
           const defaultSettings = {
-            debug: canSeeDebug ? true : false,
+            debug: canSeeDebug ? false : false,
             info: canSeeInfo ? true : false,
-            prioritaire: canSeePrioritaire ? true : false,
+            prioritaire: canSeePrioritaire ? false : false,
           };
           await AsyncStorage.setItem("notificationSettings", JSON.stringify(defaultSettings));
           setNotificationSettings(defaultSettings);
-          console.log(`[${new Date().toLocaleString()}] Paramètres initialisés par défaut pour rôle ${role}:`, defaultSettings);
+          await syncSettingsWithBackend(defaultSettings);
         }
       } catch (error) {
-        console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres : ${error.message}`);
+        console.warn(`Erreur lors du chargement des paramètres : ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -48,15 +49,36 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
     loadSettings();
   }, [role]);
 
+  const syncSettingsWithBackend = async (settings) => {
+    try {
+      const email = await AsyncStorage.getItem("email");
+      if (email) {
+        const response = await fetch(`${API_URL}/update-notification-settings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEY,
+          },
+          body: JSON.stringify({ email, notificationSettings: settings }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+        console.log(`Paramètres synchronisés pour ${email}:`, result);
+      }
+    } catch (error) {
+      console.warn(`Erreur lors de la synchronisation avec le backend : ${error.message}`);
+    }
+  };
+
   const toggleNotification = async (type, value) => {
     setLoading(true);
     try {
       const newSettings = { ...notificationSettings, [type]: value };
       setNotificationSettings(newSettings);
       await AsyncStorage.setItem("notificationSettings", JSON.stringify(newSettings));
-      console.log(`[${new Date().toLocaleString()}] Paramètre ${type} mis à jour : ${value}`);
+      await syncSettingsWithBackend(newSettings);
     } catch (error) {
-      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour des paramètres : ${error.message}`);
+      console.warn(`Erreur lors de la mise à jour des paramètres : ${error.message}`);
       Alert.alert("Erreur", "Impossible de sauvegarder les paramètres");
     } finally {
       setLoading(false);
@@ -67,8 +89,6 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
   const canSeePrioritaire = role && (role.toLowerCase() === "vip" || role.toLowerCase() === "admin");
   const canSeeInfo = true;
 
-  console.log(`[${new Date().toLocaleString()}] Rendu avec rôle : ${role}, canSeePrioritaire : ${canSeePrioritaire}`);
-
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Paramètres des notifications</Text>
@@ -77,7 +97,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         <View style={styles.toggleContainer}>
           <View style={styles.toggleRow}>
             <Icon name="bug-report" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-            <Text style={styles.toggleLabel}>Notifications debug</Text>
+            <Text style={styles.toggleLabel}>Notifications Debug</Text>
             <Switch
               value={notificationSettings.debug}
               onValueChange={(value) => toggleNotification("debug", value)}
@@ -92,7 +112,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         <View style={styles.toggleContainer}>
           <View style={styles.toggleRow}>
             <Icon name="info" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-            <Text style={styles.toggleLabel}>Notifications standard (Canton)</Text>
+            <Text style={styles.toggleLabel}>Notifications Info</Text>
             <Switch
               value={notificationSettings.info}
               onValueChange={(value) => toggleNotification("info", value)}
@@ -107,7 +127,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         <View style={styles.toggleContainer}>
           <View style={styles.toggleRow}>
             <Icon name="warning" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-            <Text style={styles.toggleLabel}>Notifications prioritaires (SDIS Broye-Vully)</Text>
+            <Text style={styles.toggleLabel}>Notifications Prioritaires</Text>
             <Switch
               value={notificationSettings.prioritaire}
               onValueChange={(value) => toggleNotification("prioritaire", value)}

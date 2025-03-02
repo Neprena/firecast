@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar, useColorScheme, AppState } from "react-native";
+import { StatusBar, useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import Constants from "expo-constants";
-import NetInfo from "@react-native-community/netinfo";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
@@ -18,34 +16,16 @@ import NotificationsSettingsScreen from "./screens/NotificationsSettingsScreen";
 import { lightStyles, darkStyles } from "./styles";
 
 const API_URL = "https://api.ecascan.npna.ch";
-const API_KEY = Constants.expoConfig?.extra?.apiKey || "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
+const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 const Stack = createNativeStackNavigator();
 
-// Configuration dynamique des notifications push
+// Gestion des notifications push simplifiée
 Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const storedSettings = await AsyncStorage.getItem("notificationSettings");
-    let settings = { debug: false, info: true, prioritaire: false }; // Valeurs par défaut
-    if (storedSettings) {
-      settings = JSON.parse(storedSettings);
-    }
-    const { data } = notification.request.content;
-    const messageType = data?.messageType || "Info"; // Type envoyé par le backend dans data
-
-    // Vérifie si le type spécifique est activé
-    const shouldNotify =
-      (messageType === "Debug" && settings.debug) ||
-      (messageType === "Info" && settings.info) ||
-      (messageType === "Prioritaire" && settings.prioritaire);
-
-    console.log(`[${new Date().toLocaleString()}] Gestion des notifications push - Type: ${messageType}, ShouldNotify: ${shouldNotify}, Settings:`, settings);
-
-    return {
-      shouldShowAlert: shouldNotify,
-      shouldPlaySound: shouldNotify,
-      shouldSetBadge: false,
-    };
-  },
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
 });
 
 const App = () => {
@@ -64,22 +44,7 @@ const App = () => {
         if (storedEmail) {
           setEmail(storedEmail);
           await fetchUserInfo(storedEmail);
-        }
-      } catch (error) {
-        console.warn("Erreur lors de la vérification du statut de connexion :", error);
-      }
-    };
-    checkLoginStatus();
-    registerForPushNotificationsAsync();
-  }, []);
-
-  useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const storedEmail = await AsyncStorage.getItem("email");
-        if (storedEmail && !isConnected) {
-          setEmail(storedEmail);
-          await fetchUserInfo(storedEmail);
+          await registerForPushNotificationsAsync(storedEmail);
         }
       } catch (error) {
         console.warn("Erreur lors de la vérification du statut de connexion :", error);
@@ -93,9 +58,7 @@ const App = () => {
       }
     }, 60 * 100);
 
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [isConnected, email]);
 
   const fetchUserInfo = async (userEmail) => {
@@ -146,6 +109,7 @@ const App = () => {
       setEmail(loginEmail);
       setPassword(loginPassword);
       setIsConnected(true);
+      await registerForPushNotificationsAsync(loginEmail);
     } catch (error) {
       Alert.alert("Erreur", error.message);
     } finally {
@@ -188,7 +152,7 @@ const App = () => {
     }
   };
 
-  const registerForPushNotificationsAsync = async () => {
+  const registerForPushNotificationsAsync = async (userEmail) => {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -201,34 +165,29 @@ const App = () => {
         return;
       }
 
-      const storedSettings = await AsyncStorage.getItem("notificationSettings");
-      let notificationsEnabled = false;
-      if (storedSettings) {
-        const parsedSettings = JSON.parse(storedSettings);
-        notificationsEnabled = parsedSettings.debug || parsedSettings.info || parsedSettings.prioritaire;
-      } else {
-        notificationsEnabled = true; // Par défaut si non défini
-      }
-
-      if (!notificationsEnabled) {
-        console.log("Toutes les notifications sont désactivées, pas d'enregistrement du token push");
-        return;
-      }
-
       const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
       console.log("ExpoPushToken :", token);
-      if (userData?.email) {
-        await fetch(`${API_URL}/register-token`, {
+
+      const storedSettings = await AsyncStorage.getItem("notificationSettings");
+      let notificationSettings = { debug: false, info: true, prioritaire: false }; // Par défaut
+      if (storedSettings) {
+        notificationSettings = JSON.parse(storedSettings);
+      }
+
+      if (userEmail) {
+        const response = await fetch(`${API_URL}/register-token`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-api-key": API_KEY,
           },
-          body: JSON.stringify({ email: userData.email, token }),
+          body: JSON.stringify({ email: userEmail, token, notificationSettings }),
         });
+        const result = await response.json();
+        console.log(`[${new Date().toLocaleString()}] Token et paramètres enregistrés pour ${userEmail}:`, result);
       }
     } catch (error) {
-      console.warn("Erreur dans registerForPushNotificationsAsync :", error);
+      console.warn("Erreur dans registerForPushNotificationsAsync :", error.message);
     }
   };
 
