@@ -311,7 +311,7 @@ const MessagesScreen = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>ECAScanPhone - Messages</Text>
+      <Text style={styles.title}>Messages - Alarmes</Text>
 
       {isSubscriptionExpired ? (
         <View style={{ alignItems: "center" }}>

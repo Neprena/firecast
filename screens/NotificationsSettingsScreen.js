@@ -77,7 +77,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         <View style={styles.toggleContainer}>
           <View style={styles.toggleRow}>
             <Icon name="bug-report" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-            <Text style={styles.toggleLabel}>Notifications Debug</Text>
+            <Text style={styles.toggleLabel}>Notifications debug</Text>
             <Switch
               value={notificationSettings.debug}
               onValueChange={(value) => toggleNotification("debug", value)}
@@ -92,7 +92,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         <View style={styles.toggleContainer}>
           <View style={styles.toggleRow}>
             <Icon name="info" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-            <Text style={styles.toggleLabel}>Notifications Info</Text>
+            <Text style={styles.toggleLabel}>Notifications standard (Canton)</Text>
             <Switch
               value={notificationSettings.info}
               onValueChange={(value) => toggleNotification("info", value)}
@@ -107,7 +107,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         <View style={styles.toggleContainer}>
           <View style={styles.toggleRow}>
             <Icon name="warning" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-            <Text style={styles.toggleLabel}>Notifications Prioritaires</Text>
+            <Text style={styles.toggleLabel}>Notifications prioritaires (SDIS Broye-Vully)</Text>
             <Switch
               value={notificationSettings.prioritaire}
               onValueChange={(value) => toggleNotification("prioritaire", value)}

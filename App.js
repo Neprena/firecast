@@ -23,18 +23,26 @@ const Stack = createNativeStackNavigator();
 
 // Configuration dynamique des notifications push
 Notifications.setNotificationHandler({
-  handleNotification: async () => {
+  handleNotification: async (notification) => {
     const storedSettings = await AsyncStorage.getItem("notificationSettings");
     let settings = { debug: false, info: true, prioritaire: false }; // Valeurs par défaut
     if (storedSettings) {
       settings = JSON.parse(storedSettings);
     }
-    const notificationsEnabled = settings.debug || settings.info || settings.prioritaire;
-    console.log(`[${new Date().toLocaleString()}] Gestion des notifications push - Enabled: ${notificationsEnabled}, Settings:`, settings);
+    const { data } = notification.request.content;
+    const messageType = data?.messageType || "Info"; // Type envoyé par le backend dans data
+
+    // Vérifie si le type spécifique est activé
+    const shouldNotify =
+      (messageType === "Debug" && settings.debug) ||
+      (messageType === "Info" && settings.info) ||
+      (messageType === "Prioritaire" && settings.prioritaire);
+
+    console.log(`[${new Date().toLocaleString()}] Gestion des notifications push - Type: ${messageType}, ShouldNotify: ${shouldNotify}, Settings:`, settings);
 
     return {
-      shouldShowAlert: notificationsEnabled,
-      shouldPlaySound: notificationsEnabled,
+      shouldShowAlert: shouldNotify,
+      shouldPlaySound: shouldNotify,
       shouldSetBadge: false,
     };
   },
