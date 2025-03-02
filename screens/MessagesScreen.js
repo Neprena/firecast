@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Animated } from "react-native";
+import { SafeAreaView, Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Animated, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Icon from "react-native-vector-icons/MaterialIcons"; // Assure-toi que MaterialIcons est utilisé
+import Icon from "react-native-vector-icons/MaterialIcons";
 import WebSocket from "react-native-websocket";
 import { Audio } from "expo-av";
 
@@ -21,13 +21,15 @@ const MessagesScreen = ({
   const soundRef = useRef(null);
   const isFocused = useRef(true);
 
+  const isSubscriptionExpired = role !== "admin" && (!subscriptionEndDate || new Date(subscriptionEndDate) < new Date());
+
   useEffect(() => {
     loadMessagesFromStorage();
 
     const loadSound = async () => {
       try {
         const { sound } = await Audio.Sound.createAsync(
-          require("../assets/notification.mp3"),
+          require("../assets/notification.mp3"), // Chemin corrigé
           { shouldPlay: false }
         );
         soundRef.current = sound;
@@ -63,7 +65,7 @@ const MessagesScreen = ({
       if (storedMessages) {
         const parsedMessages = JSON.parse(storedMessages).map(msg => ({
           ...msg,
-          fadeAnim: new Animated.Value(1), // Messages existants déjà visibles
+          fadeAnim: new Animated.Value(1),
         }));
         console.log(`[${new Date().toLocaleString()}] Messages chargés depuis AsyncStorage : ${parsedMessages.length} messages`);
         setAllMessages(parsedMessages);
@@ -84,7 +86,7 @@ const MessagesScreen = ({
     const animatedMessage = {
       ...newMessage,
       fadeAnim: new Animated.Value(0),
-      isNew: true, // Toujours marqué comme nouveau pour l’animation initiale
+      isNew: true,
     };
 
     setAllMessages((prevMessages) => {
@@ -122,97 +124,145 @@ const MessagesScreen = ({
     msg.message.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Fonction pour déterminer la couleur de fond selon le type (permanente)
   const getMessageBackgroundColor = (type) => {
     switch (type) {
-      case "Debug": return "#F5F5F5"; // Gris légèrement plus clair pour Debug
-      case "Info": return "#f0f0f0"; // Gris clair standard pour Info
-      case "Prioritaire": return "#ff6961"; // Rouge pour Prioritaire
-      default: return "#f0f0f0"; // Gris clair par défaut
+      case "Debug": return "#F5F5F5";
+      case "Info": return "#f0f0f0";
+      case "Prioritaire": return "#FFA500";
+      default: return "#f0f0f0";
     }
   };
 
-  // Fonction pour déterminer l’icône selon le type
   const getMessageIcon = (type) => {
     switch (type) {
-      case "Debug": return "bug-report"; // Icône pour Debug
-      case "Info": return "info"; // Icône pour Info
-      case "Prioritaire": return "warning"; // Icône pour Prioritaire
-      default: return "info"; // Icône par défaut
+      case "Debug": return "bug-report";
+      case "Info": return "info";
+      case "Prioritaire": return "warning";
+      default: return "info";
+    }
+  };
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("https://api.ecascan.npna.ch/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc",
+        },
+        body: JSON.stringify({ email, returnUrl: "ecascanphone://payment-success" }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Erreur lors de la création de la session de paiement");
+      Linking.openURL(json.checkoutUrl);
+    } catch (error) {
+      Alert.alert("Erreur", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setLoading(true);
+    try {
+      await AsyncStorage.removeItem("email");
+      navigation.navigate("Login");
+    } catch (error) {
+      Alert.alert("Erreur", "Erreur lors de la déconnexion");
+    } finally {
+      setLoading(false);
     }
   };
 
   const renderMessage = ({ item }) => (
-  <TouchableOpacity
-    onPress={() =>
-      navigation.navigate("MessageDetail", {
-        message: {
-          message: item.message, // Texte brut
-          timestamp: item.timestamp, // Timestamp
-          type: item.type, // Type pour cohérence
-        },
-      })
-    }
-  >
-    <Animated.View style={{ opacity: item.fadeAnim || 1 }}>
-      <View style={[styles.message, { backgroundColor: getMessageBackgroundColor(item.type) }]}>
-        <Text style={styles.messageText}>{item.message}</Text>
-        <Text style={styles.timestamp}>
-          {new Date(item.timestamp).toLocaleString("fr-FR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })}
-        </Text>
-        <Icon name={getMessageIcon(item.type)} size={16} color="#666" style={styles.messageIcon} />
-      </View>
-    </Animated.View>
-  </TouchableOpacity>
-);
+    <TouchableOpacity onPress={() => navigation.navigate("MessageDetail", { message: { message: item.message, timestamp: item.timestamp, type: item.type } })}>
+      <Animated.View style={{ opacity: item.fadeAnim || 1 }}>
+        <View style={[styles.message, { backgroundColor: getMessageBackgroundColor(item.type) }]}>
+          <Text style={styles.messageText}>{item.message}</Text>
+          <Text style={styles.timestamp}>
+            {new Date(item.timestamp).toLocaleString("fr-FR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
+          </Text>
+          <Icon name={getMessageIcon(item.type)} size={16} color="#666" style={styles.messageIcon} />
+        </View>
+      </Animated.View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>ECAScanPhone - Messages</Text>
 
-      <View style={styles.input}>
-        <Icon name="search" size={20} color="#666" style={styles.inputIcon} />
-        <TextInput
-          style={{ flex: 1 }}
-          placeholder="Rechercher dans les messages"
-          value={searchQuery}
-          onChangeText={handleSearch}
-        />
-      </View>
+      {isSubscriptionExpired ? (
+        <View style={{ alignItems: "center" }}>
+          <View style={styles.messageContainer}>
+            <Text style={[styles.messageText, { textAlign: "center" }]}>
+              Votre abonnement a expiré. Renouvelez-le pour continuer à recevoir les alertes en temps réel.
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Profile")}>
+            <Icon name="person" size={20} color="#fff" style={styles.buttonIcon} />
+            <Text
+              style={styles.buttonText}
+              allowFontScaling={false}
+              numberOfLines={1}
+              ellipsizeMode="none"
+            >
+              Profil
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <View style={styles.input}>
+            <Icon name="search" size={20} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={{ flex: 1 }}
+              placeholder="Rechercher dans les messages"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+          </View>
 
-      <FlatList
-        data={filteredMessages}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderMessage}
-        ListEmptyComponent={<Text style={styles.info}>Aucun message</Text>}
-        refreshing={loading}
-        onRefresh={fetchMessages}
-        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
-      />
+          <FlatList
+            data={filteredMessages}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderMessage}
+            ListEmptyComponent={<Text style={styles.info}>Aucun message</Text>}
+            refreshing={loading}
+            onRefresh={fetchMessages}
+            contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
+          />
 
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate("Profile")}
-      >
-        <Icon name="person" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text style={styles.buttonText}>Profil</Text>
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Profile")}>
+            <Icon name="person" size={20} color="#fff" style={styles.buttonIcon} />
+            <Text
+              style={styles.buttonText}
+              allowFontScaling={false}
+              numberOfLines={1}
+              ellipsizeMode="none"
+            >
+              Profil
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
 
-      {loading && (
+      {loading && !isSubscriptionExpired && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={styles.button.backgroundColor} />
         </View>
       )}
 
       <WebSocket
-        url="ws://websocket.ecascan.npna.ch:8080" // URL non sécurisée directe
+        url="ws://84.234.18.3:8080"
         onOpen={() => console.log("WebSocket connecté avec succès")}
         onMessage={handleWebSocketMessage}
         onError={(error) => console.error("Détails erreur WebSocket :", JSON.stringify(error))}

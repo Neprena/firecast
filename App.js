@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar, useColorScheme, AppState } from "react-native";
+import { StatusBar, useColorScheme, AppState } from "react-native"; // Linking supprimé
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -53,6 +53,31 @@ const App = () => {
     registerForPushNotificationsAsync();
   }, []);
 
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const storedEmail = await AsyncStorage.getItem("email");
+        if (storedEmail && !isConnected) {
+          setEmail(storedEmail);
+          await fetchUserInfo(storedEmail);
+        }
+      } catch (error) {
+        console.warn("Erreur lors de la vérification du statut de connexion :", error);
+      }
+    };
+    checkLoginStatus();
+
+    const interval = setInterval(() => {
+      if (isConnected && email) {
+        fetchUserInfo(email);
+      }
+    }, 60 * 100);
+
+    return () => {
+      clearInterval(interval); // Nettoyage uniquement de l’intervalle
+    };
+  }, [isConnected, email]);
+
   const fetchUserInfo = async (userEmail) => {
     try {
       const response = await fetch(`${API_URL}/user-info`, {
@@ -82,31 +107,31 @@ const App = () => {
   };
 
   const handleLogin = async (loginEmail, loginPassword) => {
-  setLoading(true);
-  try {
-    const response = await fetch(`${API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-    });
-    const json = await response.json();
-    if (!response.ok) throw new Error(json.error || "Erreur de connexion");
-    await AsyncStorage.setItem("email", loginEmail);
-    setUserData({
-      email: json.email,
-      subscriptionEndDate: json.subscriptionEndDate,
-      role: json.role,
-      isActive: json.isActive,
-    });
-    setEmail(loginEmail); // Met à jour l’état local
-    setPassword(loginPassword); // Garde le mot de passe pour éviter les vides
-    setIsConnected(true);
-  } catch (error) {
-    Alert.alert("Erreur", error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || "Erreur de connexion");
+      await AsyncStorage.setItem("email", loginEmail);
+      setUserData({
+        email: json.email,
+        subscriptionEndDate: json.subscriptionEndDate,
+        role: json.role,
+        isActive: json.isActive,
+      });
+      setEmail(loginEmail);
+      setPassword(loginPassword);
+      setIsConnected(true);
+    } catch (error) {
+      Alert.alert("Erreur", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     setLoading(true);

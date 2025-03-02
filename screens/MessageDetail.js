@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { SafeAreaView, View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Import corrigé
 
 const MessageDetail = ({ navigation, route, styles }) => {
   const { message } = route.params; // Objet sérialisé { message, timestamp, type }
@@ -18,6 +19,22 @@ const MessageDetail = ({ navigation, route, styles }) => {
   const geocodeMessage = async (text) => {
     setLoading(true);
     console.log(`[${new Date().toLocaleString()}] Début géocodage pour le message :`, text);
+
+    // Vérifie d’abord dans le cache local
+    try {
+      const cachedCoords = await AsyncStorage.getItem(`geocode_${text}`);
+      if (cachedCoords) {
+        const coords = JSON.parse(cachedCoords);
+        console.log(`[${new Date().toLocaleString()}] Coordonnées trouvées dans le cache :`, coords);
+        setCoordinates(coords);
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la lecture du cache :`, error.message);
+    }
+
+    // Si pas dans le cache, requête API
     try {
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(text)}&key=${GOOGLE_API_KEY}`;
       console.log(`[${new Date().toLocaleString()}] URL de la requête :`, url);
@@ -35,6 +52,14 @@ const MessageDetail = ({ navigation, route, styles }) => {
         };
         console.log(`[${new Date().toLocaleString()}] Coordonnées trouvées :`, coords);
         setCoordinates(coords);
+
+        // Stocke dans le cache
+        try {
+          await AsyncStorage.setItem(`geocode_${text}`, JSON.stringify(coords));
+          console.log(`[${new Date().toLocaleString()}] Coordonnées stockées dans le cache pour :`, text);
+        } catch (error) {
+          console.warn(`[${new Date().toLocaleString()}] Erreur lors de l’écriture dans le cache :`, error.message);
+        }
       } else {
         console.log(`[${new Date().toLocaleString()}] Aucune coordonnée trouvée dans la réponse, statut :`, data.status);
         throw new Error("Adresse non trouvée");
