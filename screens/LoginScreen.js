@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from "react-native"; // Ajouté Image
+import Icon from "react-native-vector-icons/MaterialIcons";
 
-const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setParentPassword, handleLogin }) => {
+const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setParentPassword, handleLogin, styles }) => {
   const [email, setLocalEmail] = useState("");
   const [password, setLocalPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,77 +43,56 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Connexion à ECAScanPhone</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setLocalEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
+    <SafeAreaView style={styles.container}>
+      <Image
+        source={require('../assets/logo.png')} // Chemin vers ton logo
+        style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }} // Grand logo
       />
       
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        value={password}
-        onChangeText={setLocalPassword}
-        secureTextEntry
-      />
+      <View style={styles.input}>
+        <Icon name="email" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={{ flex: 1 }}
+          placeholder="Email"
+          value={email}
+          onChangeText={setLocalEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </View>
+      
+      <View style={styles.input}>
+        <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={{ flex: 1 }}
+          placeholder="Mot de passe"
+          value={password}
+          onChangeText={setLocalPassword}
+          secureTextEntry
+        />
+      </View>
       
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[styles.button, loading && { backgroundColor: "#aaa" }]}
         onPress={performLogin}
         disabled={loading}
       >
+        <Icon name="login" size={20} color="#fff" style={styles.buttonIcon} />
         {loading ? (
           <ActivityIndicator size="small" color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Se connecter</Text>
+          <Text
+            style={styles.buttonText}
+            allowFontScaling={false}
+            numberOfLines={1}
+            ellipsizeMode="none"
+          >
+            Se connecter
+          </Text>
         )}
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-    backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-    color: "#333",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 12,
-    marginBottom: 15,
-    borderRadius: 8,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: "#007AFF",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    backgroundColor: "#aaa",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});
 
 export default LoginScreen;

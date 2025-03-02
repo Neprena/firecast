@@ -34,7 +34,7 @@ export const lightStyles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: "#fff",
     minHeight: 50,
-    width: "100%",
+    width: "95%",
   },
   inputIcon: {
     marginRight: 5,
@@ -66,6 +66,7 @@ export const lightStyles = StyleSheet.create({
   button: {
     backgroundColor: "#007AFF",
     padding: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -76,6 +77,7 @@ export const lightStyles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: "#6c757d",
     padding: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -86,6 +88,7 @@ export const lightStyles = StyleSheet.create({
   logoutButton: {
     backgroundColor: "#dc3545",
     padding: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -95,6 +98,7 @@ export const lightStyles = StyleSheet.create({
   },
   toggleButton: {
     padding: 10,
+    paddingHorizontal: 15,
     borderRadius: 8,
     alignItems: "center",
     flexDirection: "row",
@@ -103,8 +107,12 @@ export const lightStyles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
+    flexShrink: 1,
+    minWidth: 0,
+    flex: 1,
+    textAlign: "center",
   },
   buttonIcon: {
     marginRight: 5,
@@ -159,17 +167,19 @@ export const lightStyles = StyleSheet.create({
   filterContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
+    width: "95%",
     marginBottom: 10,
     marginHorizontal: 10,
   },
   filterButton: {
     flex: 1,
     backgroundColor: "#ccc",
-    padding: 8,
+    paddingVertical: 12, // Augmenté de 8 à 12 pour plus de hauteur
+    paddingHorizontal: 15, // Légèrement augmenté pour cohérence
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 2,
+    minHeight: 40, // Ajouté pour garantir une hauteur minimale
   },
   addContainer: {
     marginHorizontal: 10,
@@ -265,6 +275,7 @@ export const darkStyles = StyleSheet.create({
   button: {
     backgroundColor: "#1e90ff",
     padding: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -275,6 +286,7 @@ export const darkStyles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: "#6c757d",
     padding: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -285,6 +297,7 @@ export const darkStyles = StyleSheet.create({
   logoutButton: {
     backgroundColor: "#dc3545",
     padding: 15,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -294,6 +307,7 @@ export const darkStyles = StyleSheet.create({
   },
   toggleButton: {
     padding: 10,
+    paddingHorizontal: 15,
     borderRadius: 8,
     alignItems: "center",
     flexDirection: "row",
@@ -302,8 +316,12 @@ export const darkStyles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
+    flexShrink: 1,
+    minWidth: 0,
+    flex: 1,
+    textAlign: "center",
   },
   buttonIcon: {
     marginRight: 5,
@@ -362,9 +380,13 @@ export const darkStyles = StyleSheet.create({
   },
   filterButton: {
     backgroundColor: "#343a40",
-    paddingVertical: 8,
+    paddingVertical: 12, // Augmenté de 8 à 12 pour plus de hauteur
     paddingHorizontal: 15,
     borderRadius: 5,
+    alignItems: "center",
+    minHeight: 40, // Ajouté pour garantir une hauteur minimale
+    flex: 1, // Conservé pour l’étirement horizontal
+    marginHorizontal: 2, // Ajouté pour un léger espacement
   },
   addContainer: {
     marginHorizontal: 10,

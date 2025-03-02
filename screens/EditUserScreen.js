@@ -90,6 +90,7 @@ const EditUserScreen = ({ route, navigation, styles }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Toggle "Actif :" adapté comme dans ProfileScreen */}
       <View style={styles.toggleContainer}>
         <View style={styles.toggleRow}>
           <Icon name="toggle-on" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator } from "react-native";
+import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator, Image } from "react-native"; // Ajouté Image
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -129,9 +129,15 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>ECAScanPhone</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+        <Image
+          source={require('../assets/logo.png')} // Chemin vers ton logo
+          style={{ width: 100, height: 100}} // Petit logo
+        />
+        
+      </View>
       <Text style={styles.subtitle}>Version {APP_VERSION}</Text>
-      <Text style={styles.subtitle}>Profil</Text>
+      <Text style={styles.title}>Profil</Text>
       <Text style={styles.subtitle}>Utilisateur: {email}</Text>
       <Text style={styles.subtitle}>Statut: Connecté</Text>
       <Text style={styles.subtitle}>Rôle: {role}</Text>
@@ -143,13 +149,27 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
       {isSubscriptionExpired && (
         <TouchableOpacity style={styles.button} onPress={handleSubscribe}>
           <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Se réabonner</Text>
+          <Text
+            style={styles.buttonText}
+            allowFontScaling={false}
+            numberOfLines={1}
+            ellipsizeMode="none"
+          >
+            Se réabonner
+          </Text>
         </TouchableOpacity>
       )}
       {role === "admin" && (
         <TouchableOpacity style={[styles.button, { backgroundColor: "#ccc" }]} disabled>
           <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Se réabonner</Text>
+          <Text
+            style={styles.buttonText}
+            allowFontScaling={false}
+            numberOfLines={1}
+            ellipsizeMode="none"
+          >
+            Se réabonner
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -171,7 +191,12 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
         onPress={() => setIsChangingPassword(!isChangingPassword)}
       >
         <Icon name="lock" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text style={styles.buttonText}>
+        <Text
+          style={styles.buttonText}
+          allowFontScaling={false}
+          numberOfLines={1}
+          ellipsizeMode="none"
+        >
           {isChangingPassword ? "Annuler" : "Changer le mot de passe"}
         </Text>
       </TouchableOpacity>
@@ -210,7 +235,14 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
           </View>
           <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
             <Icon name="save" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Valider le changement</Text>
+            <Text
+              style={styles.buttonText}
+              allowFontScaling={false}
+              numberOfLines={1}
+              ellipsizeMode="none"
+            >
+              Valider le changement
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -221,7 +253,14 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
           onPress={() => navigation.navigate("Admin")}
         >
           <Icon name="admin-panel-settings" size={20} color="#fff" style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Administration</Text>
+          <Text
+            style={styles.buttonText}
+            allowFontScaling={false}
+            numberOfLines={1}
+            ellipsizeMode="none"
+          >
+            Administration
+          </Text>
         </TouchableOpacity>
       )}
 
@@ -229,12 +268,26 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Icon name="logout" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text style={styles.buttonText}>Se déconnecter</Text>
+        <Text
+          style={styles.buttonText}
+          allowFontScaling={false}
+          numberOfLines={1}
+          ellipsizeMode="none"
+        >
+          Se déconnecter
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Messages")}>
         <Icon name="arrow-back" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text style={styles.buttonText}>Retour</Text>
+        <Text
+          style={styles.buttonText}
+          allowFontScaling={false}
+          numberOfLines={1}
+          ellipsizeMode="none"
+        >
+          Retour
+        </Text>
       </TouchableOpacity>
 
       {loading && (
