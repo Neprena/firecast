@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from "react-native"; // Ajouté Image
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setParentPassword, handleLogin, styles }) => {
@@ -7,35 +7,20 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   const [password, setLocalPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const API_URL = "https://api.ecascan.npna.ch";
-  const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
-
   const performLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Erreur", "Veuillez entrer un email et un mot de passe.");
+      return;
+    }
     setLoading(true);
     try {
-      console.log(`[${new Date().toLocaleString()}] Tentative de connexion pour ${email} vers ${API_URL}/login`);
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      console.log(`[${new Date().toLocaleString()}] Réponse serveur : statut ${response.status}`);
-      
-      const json = await response.json();
-      if (!response.ok) {
-        console.error(`[${new Date().toLocaleString()}] Erreur serveur : ${json.error || "Erreur inconnue"}, statut: ${response.status}`);
-        throw new Error(json.error || "Erreur lors de la connexion");
-      }
-
-      console.log(`[${new Date().toLocaleString()}] Connexion réussie pour ${email}`);
+      console.log(`[${new Date().toLocaleString()}] Tentative de connexion pour ${email}`);
+      await handleLogin(email, password);
       setParentEmail(email);
-      setParentPassword("");
-      handleLogin();
+      setParentPassword(password);
+      console.log(`[${new Date().toLocaleString()}] Connexion réussie pour ${email}`);
     } catch (error) {
-      console.error(`[${new Date().toLocaleString()}] Échec de la connexion : ${error.message}, détails : ${error.stack || "Aucun détail supplémentaire"}`);
+      console.error(`[${new Date().toLocaleString()}] Échec de la connexion : ${error.message}`);
       Alert.alert("Erreur", error.message || "Erreur lors de la connexion");
     } finally {
       setLoading(false);
@@ -45,8 +30,8 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   return (
     <SafeAreaView style={styles.container}>
       <Image
-        source={require('../assets/logo.png')} // Chemin vers ton logo
-        style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }} // Grand logo
+        source={require('../assets/logo.png')} // Corrigé le chemin si à la racine
+        style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }}
       />
       
       <View style={styles.input}>

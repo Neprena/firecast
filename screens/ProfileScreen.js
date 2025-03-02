@@ -136,10 +136,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
         />
         
       </View>
-      <Text style={styles.subtitle}>Version {APP_VERSION}</Text>
-      <Text style={styles.title}>Profil</Text>
       <Text style={styles.subtitle}>Utilisateur: {email}</Text>
-      <Text style={styles.subtitle}>Statut: Connecté</Text>
       <Text style={styles.subtitle}>Rôle: {role}</Text>
       <Text style={[styles.subtitle, { color: isConnected ? "green" : "red" }]}>
         Serveur : {isConnected ? "Connecté ✅" : "Déconnecté ❌"}

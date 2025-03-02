@@ -143,6 +143,17 @@ const MessagesScreen = ({
   };
 
   const renderMessage = ({ item }) => (
+  <TouchableOpacity
+    onPress={() =>
+      navigation.navigate("MessageDetail", {
+        message: {
+          message: item.message, // Texte brut
+          timestamp: item.timestamp, // Timestamp
+          type: item.type, // Type pour cohérence
+        },
+      })
+    }
+  >
     <Animated.View style={{ opacity: item.fadeAnim || 1 }}>
       <View style={[styles.message, { backgroundColor: getMessageBackgroundColor(item.type) }]}>
         <Text style={styles.messageText}>{item.message}</Text>
@@ -159,7 +170,8 @@ const MessagesScreen = ({
         <Icon name={getMessageIcon(item.type)} size={16} color="#666" style={styles.messageIcon} />
       </View>
     </Animated.View>
-  );
+  </TouchableOpacity>
+);
 
   return (
     <SafeAreaView style={styles.container}>
