@@ -21,7 +21,12 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.neprena.ecascan",
-      "buildNumber": "0.0.1"
+      "buildNumber": "0.0.5",
+      "icon": {
+        "dark": "./assets/images/icon.png",
+        "light": "./assets/images/icon.png",
+        "tinted": "./assets/images/icon.png"
+      }
     },
     "android": {
       "adaptiveIcon": {
