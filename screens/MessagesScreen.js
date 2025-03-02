@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import WebSocket from "react-native-websocket";
 import { Audio } from "expo-av";
+import * as Notifications from "expo-notifications";
 
 const MessagesScreen = ({
   navigation,
@@ -62,6 +63,15 @@ const MessagesScreen = ({
       isFocused.current = false;
     });
 
+    // Demander les permissions pour les notifications
+    const requestPermissions = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") {
+        console.warn("Permissions de notification refusées");
+      }
+    };
+    requestPermissions();
+
     return () => {
       if (soundRef.current) {
         soundRef.current.unloadAsync().catch(error => {
@@ -86,13 +96,13 @@ const MessagesScreen = ({
         console.log(`[${new Date().toLocaleString()}] Paramètres de notifications chargés :`, parsedSettings);
       } else {
         const defaultSettings = {
-          debug: canSeeDebug ? true : false,
+          debug: canSeeDebug ? false : false,
           info: canSeeInfo ? true : false,
-          prioritaire: canSeePrioritaire ? true : false,
+          prioritaire: canSeePrioritaire ? false : false,
         };
         await AsyncStorage.setItem("notificationSettings", JSON.stringify(defaultSettings));
         setNotificationSettings(defaultSettings);
-        console.log(`[${new Date().toLocaleString()}] Paramètres de notifications initialisés par défaut`);
+        console.log(`[${new Date().toLocaleString()}] Paramètres de notifications initialisés par défaut :`, defaultSettings);
       }
     } catch (error) {
       console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres de notifications : ${error.message}`);
@@ -112,13 +122,13 @@ const MessagesScreen = ({
         console.log(`[${new Date().toLocaleString()}] Filtres de messages chargés :`, parsedFilters);
       } else {
         const defaultFilters = {
-          debug: canSeeDebug ? true : false,
+          debug: canSeeDebug ? false : false,
           info: canSeeInfo ? true : false,
-          prioritaire: canSeePrioritaire ? true : false,
+          prioritaire: canSeePrioritaire ? false : false,
         };
         await AsyncStorage.setItem("messageFilters", JSON.stringify(defaultFilters));
         setMessageFilters(defaultFilters);
-        console.log(`[${new Date().toLocaleString()}] Filtres de messages initialisés par défaut`);
+        console.log(`[${new Date().toLocaleString()}] Filtres de messages initialisés par défaut :`, defaultFilters);
       }
     } catch (error) {
       console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des filtres de messages : ${error.message}`);
@@ -147,8 +157,6 @@ const MessagesScreen = ({
           fadeAnim: new Animated.Value(1),
         }));
         console.log(`[${new Date().toLocaleString()}] Messages chargés depuis AsyncStorage : ${messagesToSet.length} messages`);
-      } else {
-        console.log(`[${new Date().toLocaleString()}] Aucun message trouvé dans AsyncStorage`);
       }
 
       const fetchedMessages = await fetchMessages();
@@ -193,6 +201,7 @@ const MessagesScreen = ({
       canSeeDebug,
       canSeeInfo,
       canSeePrioritaire,
+      isFocused: isFocused.current,
     });
 
     setAllMessages((prevMessages) => {
@@ -206,15 +215,28 @@ const MessagesScreen = ({
       return updatedMessages;
     });
 
-    if (isFocused.current && soundRef.current && shouldNotify) {
-      try {
-        await soundRef.current.replayAsync();
-        console.log(`[${new Date().toLocaleString()}] Son de notification joué pour ${newMessage.type}`);
-      } catch (error) {
-        console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
+    if (shouldNotify) {
+      if (isFocused.current && soundRef.current) {
+        try {
+          await soundRef.current.replayAsync();
+          console.log(`[${new Date().toLocaleString()}] Son joué pour ${newMessage.type}`);
+        } catch (error) {
+          console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
+        }
       }
+
+      // Notification locale, déclenchée même en arrière-plan dans un build personnalisé
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: `Nouveau message (${newMessage.type})`,
+          body: newMessage.message,
+          sound: "default",
+        },
+        trigger: null, // Immédiat
+      });
+      console.log(`[${new Date().toLocaleString()}] Notification locale déclenchée pour ${newMessage.type}`);
     } else {
-      console.log(`[${new Date().toLocaleString()}] Pas de son joué pour ${newMessage.type} (shouldNotify: ${shouldNotify})`);
+      console.log(`[${new Date().toLocaleString()}] Pas de notification pour ${newMessage.type} (shouldNotify: false)`);
     }
 
     Animated.timing(animatedMessage.fadeAnim, {
@@ -239,10 +261,10 @@ const MessagesScreen = ({
 
   const getMessageBackgroundColor = (type) => {
     switch (type) {
-      case "Debug": return "#9dffc7"; // Vert clair
-      case "Info": return "#f0f0f0";  // Gris clair
-      case "Prioritaire": return "#ff9d9d"; // Rouge clair
-      default: return "#f0f0f0";     // Gris clair
+      case "Debug": return "#9dffc7";
+      case "Info": return "#f0f0f0";
+      case "Prioritaire": return "#ff9d9d";
+      default: return "#f0f0f0";
     }
   };
 
@@ -311,7 +333,7 @@ const MessagesScreen = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Messages - Alarmes</Text>
+      <Text style={styles.title}>ECAScanPhone - Messages</Text>
 
       {isSubscriptionExpired ? (
         <View style={{ alignItems: "center" }}>
@@ -322,12 +344,7 @@ const MessagesScreen = ({
           </View>
           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Profile")}>
             <Icon name="person" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text
-              style={styles.buttonText}
-              allowFontScaling={false}
-              numberOfLines={1}
-              ellipsizeMode="none"
-            >
+            <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
               Profil
             </Text>
           </TouchableOpacity>
@@ -389,12 +406,7 @@ const MessagesScreen = ({
 
           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Profile")}>
             <Icon name="person" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text
-              style={styles.buttonText}
-              allowFontScaling={false}
-              numberOfLines={1}
-              ellipsizeMode="none"
-            >
+            <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
               Profil
             </Text>
           </TouchableOpacity>

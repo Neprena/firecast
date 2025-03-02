@@ -3,9 +3,6 @@ import { SafeAreaView, View, Text, TouchableOpacity, Switch, Alert, ActivityIndi
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-const API_URL = "https://api.ecascan.npna.ch";
-const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
-
 const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
   const [loading, setLoading] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
@@ -15,6 +12,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
   });
 
   useEffect(() => {
+    console.log(`[${new Date().toLocaleString()}] useEffect déclenché avec rôle : ${role}`);
     const loadSettings = async () => {
       setLoading(true);
       try {
@@ -30,6 +28,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
             info: canSeeInfo ? (parsedSettings.info !== undefined ? parsedSettings.info : true) : false,
             prioritaire: canSeePrioritaire ? (parsedSettings.prioritaire || false) : false,
           });
+          console.log(`[${new Date().toLocaleString()}] Paramètres chargés depuis AsyncStorage :`, parsedSettings);
         } else {
           const defaultSettings = {
             debug: canSeeDebug ? false : false,
@@ -38,10 +37,10 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
           };
           await AsyncStorage.setItem("notificationSettings", JSON.stringify(defaultSettings));
           setNotificationSettings(defaultSettings);
-          await syncSettingsWithBackend(defaultSettings);
+          console.log(`[${new Date().toLocaleString()}] Paramètres initialisés par défaut :`, defaultSettings);
         }
       } catch (error) {
-        console.warn(`Erreur lors du chargement des paramètres : ${error.message}`);
+        console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres : ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -49,36 +48,15 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
     loadSettings();
   }, [role]);
 
-  const syncSettingsWithBackend = async (settings) => {
-    try {
-      const email = await AsyncStorage.getItem("email");
-      if (email) {
-        const response = await fetch(`${API_URL}/update-notification-settings`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": API_KEY,
-          },
-          body: JSON.stringify({ email, notificationSettings: settings }),
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error);
-        console.log(`Paramètres synchronisés pour ${email}:`, result);
-      }
-    } catch (error) {
-      console.warn(`Erreur lors de la synchronisation avec le backend : ${error.message}`);
-    }
-  };
-
   const toggleNotification = async (type, value) => {
     setLoading(true);
     try {
       const newSettings = { ...notificationSettings, [type]: value };
       setNotificationSettings(newSettings);
       await AsyncStorage.setItem("notificationSettings", JSON.stringify(newSettings));
-      await syncSettingsWithBackend(newSettings);
+      console.log(`[${new Date().toLocaleString()}] Paramètre ${type} mis à jour localement :`, newSettings);
     } catch (error) {
-      console.warn(`Erreur lors de la mise à jour des paramètres : ${error.message}`);
+      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour des paramètres : ${error.message}`);
       Alert.alert("Erreur", "Impossible de sauvegarder les paramètres");
     } finally {
       setLoading(false);
@@ -88,6 +66,8 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
   const canSeeDebug = role && role.toLowerCase() === "admin";
   const canSeePrioritaire = role && (role.toLowerCase() === "vip" || role.toLowerCase() === "admin");
   const canSeeInfo = true;
+
+  console.log(`[${new Date().toLocaleString()}] Rendu avec rôle : ${role}, canSeePrioritaire : ${canSeePrioritaire}`);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -143,12 +123,7 @@ const NotificationsSettingsScreen = ({ navigation, styles, role }) => {
         onPress={() => navigation.navigate("Profile")}
       >
         <Icon name="arrow-back" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text
-          style={styles.buttonText}
-          allowFontScaling={false}
-          numberOfLines={1}
-          ellipsizeMode="none"
-        >
+        <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
           Retour
         </Text>
       </TouchableOpacity>

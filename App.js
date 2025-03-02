@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { StatusBar, useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
@@ -18,15 +16,6 @@ import { lightStyles, darkStyles } from "./styles";
 const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 const Stack = createNativeStackNavigator();
-
-// Gestion des notifications push simplifiée
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 const App = () => {
   const [email, setEmail] = useState("");
@@ -44,7 +33,6 @@ const App = () => {
         if (storedEmail) {
           setEmail(storedEmail);
           await fetchUserInfo(storedEmail);
-          await registerForPushNotificationsAsync(storedEmail);
         }
       } catch (error) {
         console.warn("Erreur lors de la vérification du statut de connexion :", error);
@@ -99,6 +87,7 @@ const App = () => {
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Erreur de connexion");
+
       await AsyncStorage.setItem("email", loginEmail);
       setUserData({
         email: json.email,
@@ -109,8 +98,8 @@ const App = () => {
       setEmail(loginEmail);
       setPassword(loginPassword);
       setIsConnected(true);
-      await registerForPushNotificationsAsync(loginEmail);
     } catch (error) {
+      console.warn("Erreur lors de la connexion :", error.message);
       Alert.alert("Erreur", error.message);
     } finally {
       setLoading(false);
@@ -126,6 +115,7 @@ const App = () => {
       setUserData(null);
       setIsConnected(false);
     } catch (error) {
+      console.warn("Erreur lors de la déconnexion :", error.message);
       Alert.alert("Erreur", "Erreur lors de la déconnexion");
     } finally {
       setLoading(false);
@@ -149,45 +139,6 @@ const App = () => {
     } catch (error) {
       console.warn("Erreur dans fetchMessages :", error.message);
       return [];
-    }
-  };
-
-  const registerForPushNotificationsAsync = async (userEmail) => {
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== "granted") {
-        console.warn("Permission de notification non accordée");
-        return;
-      }
-
-      const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
-      console.log("ExpoPushToken :", token);
-
-      const storedSettings = await AsyncStorage.getItem("notificationSettings");
-      let notificationSettings = { debug: false, info: true, prioritaire: false }; // Par défaut
-      if (storedSettings) {
-        notificationSettings = JSON.parse(storedSettings);
-      }
-
-      if (userEmail) {
-        const response = await fetch(`${API_URL}/register-token`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": API_KEY,
-          },
-          body: JSON.stringify({ email: userEmail, token, notificationSettings }),
-        });
-        const result = await response.json();
-        console.log(`[${new Date().toLocaleString()}] Token et paramètres enregistrés pour ${userEmail}:`, result);
-      }
-    } catch (error) {
-      console.warn("Erreur dans registerForPushNotificationsAsync :", error.message);
     }
   };
 
