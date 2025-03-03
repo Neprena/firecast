@@ -192,6 +192,25 @@ export const lightStyles = StyleSheet.create({
     marginHorizontal: 2,
     minHeight: 40, // Ajouté pour garantir une hauteur minimale
   },
+  messageFilterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    marginRight: 10,
+    backgroundColor: "#f0f0f0", // Désactivé, gris clair
+  },
+  messageFilterButtonActive: {
+    backgroundColor: "#007BFF", // Activé, bleu
+  },
+  messageFilterText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#000", // Désactivé, noir
+  },
+  messageFilterTextActive: {
+    color: "#fff", // Activé, blanc
+  },
   addContainer: {
     marginHorizontal: 10,
     marginVertical: 10,
@@ -408,6 +427,25 @@ export const darkStyles = StyleSheet.create({
     minHeight: 40, // Ajouté pour garantir une hauteur minimale
     flex: 1, // Conservé pour l’étirement horizontal
     marginHorizontal: 2, // Ajouté pour un léger espacement
+  },
+  messageFilterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    marginRight: 10,
+    backgroundColor: "#333", // Désactivé, gris foncé
+  },
+  messageFilterButtonActive: {
+    backgroundColor: "#1E90FF", // Activé, bleu plus clair pour contraste
+  },
+  messageFilterText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#ccc", // Désactivé, gris clair
+  },
+  messageFilterTextActive: {
+    color: "#fff", // Activé, blanc
   },
   addContainer: {
     marginHorizontal: 10,

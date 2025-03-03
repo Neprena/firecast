@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator, Image } from "react-native"; // Ajouté Image
+import { SafeAreaView, Text, TouchableOpacity, Switch, View, TextInput, Alert, Linking, ActivityIndicator, Image } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import Icon from "react-native-vector-icons/MaterialIcons";
@@ -29,16 +29,6 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
     };
     loadNotificationSetting();
   }, []);
-
-  const toggleNotifications = async (value) => {
-    try {
-      setNotificationsEnabled(value);
-      await AsyncStorage.setItem("notificationsEnabled", JSON.stringify(value));
-      console.log("Notifications mises à jour :", value);
-    } catch (error) {
-      console.warn("Erreur lors de la mise à jour des notifications :", error);
-    }
-  };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -126,80 +116,67 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
       : "Non abonné";
 
   const isSubscriptionExpired = role !== "admin" && (!subscriptionEndDate || new Date(subscriptionEndDate) < new Date());
+  
+  // Capitaliser le rôle
+  const capitalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1).toLowerCase() : "";
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
         <Image
-          source={require('../assets/logo.png')} // Chemin vers ton logo
-          style={{ width: 100, height: 100}} // Petit logo
+          source={require("../assets/logo.png")}
+          style={{ width: 100, height: 100 }}
         />
-        
       </View>
+      <Text style={styles.subtitle}>Version {APP_VERSION}</Text>
+      <Text style={[styles.title, { textAlign: "center" }]}>Profil</Text>
       <Text style={styles.subtitle}>Utilisateur: {email}</Text>
-      <Text style={styles.subtitle}>Rôle: {role}</Text>
+      <Text style={styles.subtitle}>Rôle: {capitalizedRole}</Text>
       <Text style={[styles.subtitle, { color: isConnected ? "green" : "red" }]}>
         Serveur : {isConnected ? "Connecté ✅" : "Déconnecté ❌"}
       </Text>
       <Text style={styles.subtitle}>Abonnement: {subscriptionStatus}</Text>
 
+      {/* Boutons avec espacement uniforme */}
       {isSubscriptionExpired && (
-        <TouchableOpacity style={styles.button} onPress={handleSubscribe}>
+        <TouchableOpacity style={[styles.button, { marginVertical: 10 }]} onPress={handleSubscribe}>
           <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
-          <Text
-            style={styles.buttonText}
-            allowFontScaling={false}
-            numberOfLines={1}
-            ellipsizeMode="none"
-          >
+          <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
             Se réabonner
           </Text>
         </TouchableOpacity>
       )}
       {role === "admin" && (
-        <TouchableOpacity style={[styles.button, { backgroundColor: "#ccc" }]} disabled>
+        <TouchableOpacity style={[styles.button, { marginVertical: 10, backgroundColor: "#ccc" }]} disabled>
           <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
-          <Text
-            style={styles.buttonText}
-            allowFontScaling={false}
-            numberOfLines={1}
-            ellipsizeMode="none"
-          >
+          <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
             Se réabonner
           </Text>
         </TouchableOpacity>
       )}
 
-      <View style={styles.toggleContainer}>
-        <View style={styles.toggleRow}>
-          <Icon name="notifications" size={20} color={styles.subtitle.color} style={styles.toggleIcon} />
-          <Text style={styles.toggleLabel}>Activer les notifications</Text>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={toggleNotifications}
-            trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={notificationsEnabled ? "#007BFF" : "#f4f3f4"}
-          />
-        </View>
-      </View>
+      <TouchableOpacity
+        style={[styles.secondaryButton, { marginVertical: 10 }]}
+        onPress={() => navigation.navigate("NotificationsSettings")}
+      >
+        <Icon name="notifications" size={20} color="#fff" style={styles.buttonIcon} />
+        <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
+          Paramètres notifications
+        </Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.secondaryButton}
+        style={[styles.secondaryButton, { marginVertical: 10 }]}
         onPress={() => setIsChangingPassword(!isChangingPassword)}
       >
         <Icon name="lock" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text
-          style={styles.buttonText}
-          allowFontScaling={false}
-          numberOfLines={1}
-          ellipsizeMode="none"
-        >
+        <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
           {isChangingPassword ? "Annuler" : "Changer le mot de passe"}
         </Text>
       </TouchableOpacity>
 
       {isChangingPassword && (
-        <View style={styles.passwordChangeContainer}>
+        <View style={[styles.passwordChangeContainer, { marginVertical: 10 }]}>
           <View style={styles.input}>
             <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
             <TextInput
@@ -230,14 +207,9 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
               onChangeText={setConfirmPassword}
             />
           </View>
-          <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
+          <TouchableOpacity style={[styles.button, { marginVertical: 10 }]} onPress={handleChangePassword}>
             <Icon name="save" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text
-              style={styles.buttonText}
-              allowFontScaling={false}
-              numberOfLines={1}
-              ellipsizeMode="none"
-            >
+            <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
               Valider le changement
             </Text>
           </TouchableOpacity>
@@ -246,43 +218,32 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
       {role === "admin" && (
         <TouchableOpacity
-          style={[styles.button, { marginTop: 20 }]}
+          style={[styles.button, { marginVertical: 10 }]}
           onPress={() => navigation.navigate("Admin")}
         >
           <Icon name="admin-panel-settings" size={20} color="#fff" style={styles.buttonIcon} />
-          <Text
-            style={styles.buttonText}
-            allowFontScaling={false}
-            numberOfLines={1}
-            ellipsizeMode="none"
-          >
+          <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
             Administration
           </Text>
         </TouchableOpacity>
       )}
 
+      {/* Espace flexible pour pousser les derniers boutons en bas */}
       <View style={{ flex: 1 }} />
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <TouchableOpacity style={[styles.logoutButton, { marginVertical: 10 }]} onPress={handleLogout}>
         <Icon name="logout" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text
-          style={styles.buttonText}
-          allowFontScaling={false}
-          numberOfLines={1}
-          ellipsizeMode="none"
-        >
+        <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
           Se déconnecter
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Messages")}>
+      <TouchableOpacity
+        style={[styles.secondaryButton, { marginVertical: 10 }]}
+        onPress={() => navigation.navigate("Messages")}
+      >
         <Icon name="arrow-back" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text
-          style={styles.buttonText}
-          allowFontScaling={false}
-          numberOfLines={1}
-          ellipsizeMode="none"
-        >
+        <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
           Retour
         </Text>
       </TouchableOpacity>

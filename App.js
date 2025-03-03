@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar, useColorScheme, AppState } from "react-native"; // Linking supprimé
+import { StatusBar, useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-import Constants from "expo-constants";
-import NetInfo from "@react-native-community/netinfo";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
@@ -14,19 +10,12 @@ import MessageDetail from "./screens/MessageDetail";
 import ProfileScreen from "./screens/ProfileScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EditUserScreen from "./screens/EditUserScreen";
+import NotificationsSettingsScreen from "./screens/NotificationsSettingsScreen";
 import { lightStyles, darkStyles } from "./styles";
 
 const API_URL = "https://api.ecascan.npna.ch";
-const API_KEY = Constants.expoConfig?.extra?.apiKey || "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
+const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 const Stack = createNativeStackNavigator();
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 const App = () => {
   const [email, setEmail] = useState("");
@@ -50,22 +39,6 @@ const App = () => {
       }
     };
     checkLoginStatus();
-    registerForPushNotificationsAsync();
-  }, []);
-
-  useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        const storedEmail = await AsyncStorage.getItem("email");
-        if (storedEmail && !isConnected) {
-          setEmail(storedEmail);
-          await fetchUserInfo(storedEmail);
-        }
-      } catch (error) {
-        console.warn("Erreur lors de la vérification du statut de connexion :", error);
-      }
-    };
-    checkLoginStatus();
 
     const interval = setInterval(() => {
       if (isConnected && email) {
@@ -73,9 +46,7 @@ const App = () => {
       }
     }, 60 * 100);
 
-    return () => {
-      clearInterval(interval); // Nettoyage uniquement de l’intervalle
-    };
+    return () => clearInterval(interval);
   }, [isConnected, email]);
 
   const fetchUserInfo = async (userEmail) => {
@@ -116,6 +87,7 @@ const App = () => {
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Erreur de connexion");
+
       await AsyncStorage.setItem("email", loginEmail);
       setUserData({
         email: json.email,
@@ -127,6 +99,7 @@ const App = () => {
       setPassword(loginPassword);
       setIsConnected(true);
     } catch (error) {
+      console.warn("Erreur lors de la connexion :", error.message);
       Alert.alert("Erreur", error.message);
     } finally {
       setLoading(false);
@@ -142,6 +115,7 @@ const App = () => {
       setUserData(null);
       setIsConnected(false);
     } catch (error) {
+      console.warn("Erreur lors de la déconnexion :", error.message);
       Alert.alert("Erreur", "Erreur lors de la déconnexion");
     } finally {
       setLoading(false);
@@ -165,34 +139,6 @@ const App = () => {
     } catch (error) {
       console.warn("Erreur dans fetchMessages :", error.message);
       return [];
-    }
-  };
-
-  const registerForPushNotificationsAsync = async () => {
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== "granted") {
-        console.warn("Permission de notification non accordée");
-        return;
-      }
-      const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
-      if (userData?.email) {
-        await fetch(`${API_URL}/register-token`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": API_KEY,
-          },
-          body: JSON.stringify({ email: userData.email, token }),
-        });
-      }
-    } catch (error) {
-      console.warn("Erreur dans registerForPushNotificationsAsync :", error);
     }
   };
 
@@ -240,6 +186,15 @@ const App = () => {
             </Stack.Screen>
             <Stack.Screen name="MessageDetail">
               {(props) => <MessageDetail {...props} styles={styles} />}
+            </Stack.Screen>
+            <Stack.Screen name="NotificationsSettings">
+              {(props) => (
+                <NotificationsSettingsScreen
+                  {...props}
+                  styles={styles}
+                  role={userData?.role}
+                />
+              )}
             </Stack.Screen>
           </>
         ) : (

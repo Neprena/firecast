@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "ecascan",
+    "name": "ECA-Scan",
     "slug": "ecascan",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "ecascanphone",
+    "scheme": "ecascan",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,15 +13,13 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.neprena.ecascan",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.neprena.ecascan",
-      "buildNumber": "0.0.1"
+      "buildNumber": "0.0.5"
     },
     "android": {
       "adaptiveIcon": {
@@ -40,7 +38,7 @@
     },
     "owner": "neprena",
     "notification": {
-      "iosDisplayInForeground": true,
+      "iosDisplayInForeground": false,
       "androidMode": "default",
       "androidCollapsedTitle": "Nouvelle alerte",
       "androidSound": "./assets/sounds/notification_sound.mp3"
