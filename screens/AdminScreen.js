@@ -6,7 +6,7 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 
-const AdminScreen = ({ navigation, styles, email }) => {
+const AdminScreen = ({ navigation, styles, email }) => { // Ligne 9:15 OK ici
   const [users, setUsers] = useState([]);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");

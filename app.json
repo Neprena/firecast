@@ -26,6 +26,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAM54lhiYraHQ9WG-Nm49ZyNZc9pbIu0Lk"
+        }
+      },
       "package": "com.neprena.ecascan"
     },
     "web": {
