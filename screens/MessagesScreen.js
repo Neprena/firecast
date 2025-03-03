@@ -29,81 +29,28 @@ const MessagesScreen = ({
     info: true,
     prioritaire: false,
   });
+  const [wsConnected, setWsConnected] = useState(true);
+  const [oldestDate, setOldestDate] = useState(new Date()); // Date la plus ancienne chargée
   const soundRef = useRef(null);
+  const wsRef = useRef(null);
   const isFocused = useRef(true);
+  const disconnectTimeoutRef = useRef(null);
 
   const isSubscriptionExpired = role !== "admin" && (!subscriptionEndDate || new Date(subscriptionEndDate) < new Date());
   const canSeeDebug = role && role.toLowerCase() === "admin";
   const canSeePrioritaire = role && (role.toLowerCase() === "vip" || role.toLowerCase() === "admin");
   const canSeeInfo = true;
 
-  useEffect(() => {
-    loadMessagesFromStorage();
-    loadNotificationSettings();
-    loadMessageFilters();
-
-    const loadSound = async () => {
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          require("../assets/notification.mp3"),
-          { shouldPlay: false }
-        );
-        soundRef.current = sound;
-        console.log(`[${new Date().toLocaleString()}] Son chargé avec succès`);
-      } catch (error) {
-        console.error(`[${new Date().toLocaleString()}] Erreur lors du chargement du son : ${error.message}`);
-      }
-    };
-    loadSound();
-
-    const unsubscribe = navigation.addListener("focus", () => {
-      isFocused.current = true;
-    });
-    const unsubscribeBlur = navigation.addListener("blur", () => {
-      isFocused.current = false;
-    });
-
-    // Demander les permissions pour les notifications
-    const requestPermissions = async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== "granted") {
-        console.warn("Permissions de notification refusées");
-      }
-    };
-    requestPermissions();
-
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(error => {
-          console.error(`[${new Date().toLocaleString()}] Erreur lors du démontage du son : ${error.message}`);
-        });
-      }
-      unsubscribe();
-      unsubscribeBlur();
-    };
-  }, [navigation]);
-
   const loadNotificationSettings = async () => {
     try {
       const storedSettings = await AsyncStorage.getItem("notificationSettings");
-      if (storedSettings) {
-        const parsedSettings = JSON.parse(storedSettings);
-        setNotificationSettings({
-          debug: canSeeDebug ? (parsedSettings.debug || false) : false,
-          info: canSeeInfo ? (parsedSettings.info !== undefined ? parsedSettings.info : true) : false,
-          prioritaire: canSeePrioritaire ? (parsedSettings.prioritaire || false) : false,
-        });
-        console.log(`[${new Date().toLocaleString()}] Paramètres de notifications chargés :`, parsedSettings);
-      } else {
-        const defaultSettings = {
-          debug: canSeeDebug ? false : false,
-          info: canSeeInfo ? true : false,
-          prioritaire: canSeePrioritaire ? false : false,
-        };
-        await AsyncStorage.setItem("notificationSettings", JSON.stringify(defaultSettings));
-        setNotificationSettings(defaultSettings);
-        console.log(`[${new Date().toLocaleString()}] Paramètres de notifications initialisés par défaut :`, defaultSettings);
-      }
+      const parsedSettings = storedSettings ? JSON.parse(storedSettings) : {
+        debug: canSeeDebug ? false : false,
+        info: canSeeInfo ? true : false,
+        prioritaire: canSeePrioritaire ? false : false,
+      };
+      setNotificationSettings(parsedSettings);
+      console.log(`[${new Date().toLocaleString()}] Notification settings chargés :`, parsedSettings);
     } catch (error) {
       console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres de notifications : ${error.message}`);
     }
@@ -146,12 +93,12 @@ const MessagesScreen = ({
     }
   };
 
-  const loadMessagesFromStorage = async () => {
+  const loadMessagesFromStorage = async (append = false) => {
     setLoading(true);
     try {
       const storedMessages = await AsyncStorage.getItem("messages");
-      let messagesToSet = [];
-      if (storedMessages) {
+      let messagesToSet = append && allMessages.length ? [...allMessages] : [];
+      if (!append && storedMessages) {
         messagesToSet = JSON.parse(storedMessages).map(msg => ({
           ...msg,
           fadeAnim: new Animated.Value(1),
@@ -159,22 +106,32 @@ const MessagesScreen = ({
         console.log(`[${new Date().toLocaleString()}] Messages chargés depuis AsyncStorage : ${messagesToSet.length} messages`);
       }
 
-      const fetchedMessages = await fetchMessages();
+      const endDate = append ? oldestDate : new Date(); // Si append, on part de la date la plus ancienne, sinon maintenant
+      const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000); // 24h avant
+      const fetchedMessages = await fetchMessages(email, endDate.toISOString(), startDate.toISOString());
       if (fetchedMessages && Array.isArray(fetchedMessages)) {
-        messagesToSet = fetchedMessages.map(msg => ({
+        const newMessages = fetchedMessages.map(msg => ({
           ...msg,
           fadeAnim: new Animated.Value(1),
         }));
-        console.log(`[${new Date().toLocaleString()}] Messages récupérés via fetchMessages : ${messagesToSet.length} messages`);
-        await AsyncStorage.setItem("messages", JSON.stringify(messagesToSet));
+        messagesToSet = append ? [...messagesToSet, ...newMessages] : newMessages; // Append ou remplace
+        const uniqueMessages = Array.from(new Map(messagesToSet.map(item => [item.id, item])).values());
+        console.log(`[${new Date().toLocaleString()}] Messages récupérés via fetchMessages (${startDate.toISOString()} - ${endDate.toISOString()}) : ${newMessages.length} messages`);
+        await AsyncStorage.setItem("messages", JSON.stringify(uniqueMessages));
+        setOldestDate(startDate); // Met à jour la date la plus ancienne chargée
+        setAllMessages(uniqueMessages);
+      } else if (!append) {
+        setAllMessages(messagesToSet); // Si pas de fetch initial, garde AsyncStorage
       }
-
-      setAllMessages(messagesToSet);
     } catch (error) {
       console.error(`[${new Date().toLocaleString()}] Erreur lors du chargement des messages : ${error.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    loadMessagesFromStorage(true);
   };
 
   const handleWebSocketMessage = async (event) => {
@@ -190,14 +147,17 @@ const MessagesScreen = ({
       return;
     }
 
+    const storedSettings = await AsyncStorage.getItem("notificationSettings");
+    const currentSettings = storedSettings ? JSON.parse(storedSettings) : notificationSettings;
+
     const shouldNotify =
-      (newMessage.type === "Debug" && notificationSettings.debug && canSeeDebug) ||
-      (newMessage.type === "Info" && notificationSettings.info && canSeeInfo) ||
-      (newMessage.type === "Prioritaire" && notificationSettings.prioritaire && canSeePrioritaire);
+      (newMessage.type === "Debug" && currentSettings.debug && canSeeDebug) ||
+      (newMessage.type === "Info" && currentSettings.info && canSeeInfo) ||
+      (newMessage.type === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
 
     console.log(`[${new Date().toLocaleString()}] Évaluation de shouldNotify pour ${newMessage.type} :`, {
       shouldNotify,
-      notificationSettings,
+      notificationSettings: currentSettings,
       canSeeDebug,
       canSeeInfo,
       canSeePrioritaire,
@@ -206,33 +166,37 @@ const MessagesScreen = ({
 
     setAllMessages((prevMessages) => {
       const updatedMessages = [animatedMessage, ...prevMessages];
+      const uniqueMessages = Array.from(new Map(updatedMessages.map(item => [item.id, item])).values());
       console.log(`[${new Date().toLocaleString()}] Nouveau message reçu via WebSocket : ${newMessage.message}, type: ${newMessage.type}`);
-      AsyncStorage.setItem("messages", JSON.stringify(updatedMessages)).then(() => {
-        console.log(`[${new Date().toLocaleString()}] Messages mis à jour dans AsyncStorage : ${updatedMessages.length} messages`);
+      AsyncStorage.setItem("messages", JSON.stringify(uniqueMessages)).then(() => {
+        console.log(`[${new Date().toLocaleString()}] Messages mis à jour dans AsyncStorage : ${uniqueMessages.length} messages`);
       }).catch((error) => {
         console.error(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour d'AsyncStorage : ${error.message}`);
       });
-      return updatedMessages;
+      return uniqueMessages;
     });
 
     if (shouldNotify) {
       if (isFocused.current && soundRef.current) {
         try {
-          await soundRef.current.replayAsync();
-          console.log(`[${new Date().toLocaleString()}] Son joué pour ${newMessage.type}`);
+          const status = await soundRef.current.getStatusAsync();
+          if (status.isLoaded) {
+            await soundRef.current.replayAsync();
+            console.log(`[${new Date().toLocaleString()}] Son joué pour ${newMessage.type}`);
+          } else {
+            console.warn(`[${new Date().toLocaleString()}] Son non chargé pour ${newMessage.type}`);
+          }
         } catch (error) {
           console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
         }
       }
-
-      // Notification locale, déclenchée même en arrière-plan dans un build personnalisé
       await Notifications.scheduleNotificationAsync({
         content: {
           title: `Nouveau message (${newMessage.type})`,
           body: newMessage.message,
           sound: "default",
         },
-        trigger: null, // Immédiat
+        trigger: null,
       });
       console.log(`[${new Date().toLocaleString()}] Notification locale déclenchée pour ${newMessage.type}`);
     } else {
@@ -248,33 +212,6 @@ const MessagesScreen = ({
 
   const handleSearch = (text) => {
     setSearchQuery(text);
-  };
-
-  const filteredMessages = allMessages.filter((msg) => {
-    const matchesSearch = msg.message.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType =
-      (msg.type === "Debug" && messageFilters.debug && canSeeDebug) ||
-      (msg.type === "Info" && messageFilters.info && canSeeInfo) ||
-      (msg.type === "Prioritaire" && messageFilters.prioritaire && canSeePrioritaire);
-    return matchesSearch && matchesType;
-  });
-
-  const getMessageBackgroundColor = (type) => {
-    switch (type) {
-      case "Debug": return "#9dffc7";
-      case "Info": return "#f0f0f0";
-      case "Prioritaire": return "#ff9d9d";
-      default: return "#f0f0f0";
-    }
-  };
-
-  const getMessageIcon = (type) => {
-    switch (type) {
-      case "Debug": return "bug-report";
-      case "Info": return "info";
-      case "Prioritaire": return "warning";
-      default: return "info";
-    }
   };
 
   const handleSubscribe = async () => {
@@ -310,6 +247,41 @@ const MessagesScreen = ({
     }
   };
 
+  const handleWsDisconnect = (event) => {
+    console.log(`[${new Date().toLocaleString()}] WebSocket déconnecté temporairement :`, event ? `${event.code} - ${event.reason}` : "Événement non défini");
+    disconnectTimeoutRef.current = setTimeout(() => {
+      setWsConnected(false);
+      console.log(`[${new Date().toLocaleString()}] WebSocket considéré comme hors ligne après période de grâce`);
+    }, 5000);
+  };
+
+  const handleWsConnect = () => {
+    if (disconnectTimeoutRef.current) {
+      clearTimeout(disconnectTimeoutRef.current);
+      console.log(`[${new Date().toLocaleString()}] Reconexion avant fin de la période de grâce`);
+    }
+    setWsConnected(true);
+    console.log(`[${new Date().toLocaleString()}] WebSocket connecté avec succès`);
+  };
+
+  const getMessageBackgroundColor = (type) => {
+    switch (type) {
+      case "Debug": return "#9dffc7";
+      case "Info": return "#f0f0f0";
+      case "Prioritaire": return "#ff9d9d";
+      default: return "#f0f0f0";
+    }
+  };
+
+  const getMessageIcon = (type) => {
+    switch (type) {
+      case "Debug": return "bug-report";
+      case "Info": return "info";
+      case "Prioritaire": return "warning";
+      default: return "info";
+    }
+  };
+
   const renderMessage = ({ item }) => (
     <TouchableOpacity onPress={() => navigation.navigate("MessageDetail", { message: { message: item.message, timestamp: item.timestamp, type: item.type } })}>
       <Animated.View style={{ opacity: item.fadeAnim || 1 }}>
@@ -331,9 +303,86 @@ const MessagesScreen = ({
     </TouchableOpacity>
   );
 
+  const filteredMessages = allMessages.filter((msg) => {
+    const matchesSearch = msg.message.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType =
+      (msg.type === "Debug" && messageFilters.debug && canSeeDebug) ||
+      (msg.type === "Info" && messageFilters.info && canSeeInfo) ||
+      (msg.type === "Prioritaire" && messageFilters.prioritaire && canSeePrioritaire);
+    return matchesSearch && matchesType;
+  });
+
+  useEffect(() => {
+    loadMessagesFromStorage();
+    loadNotificationSettings();
+    loadMessageFilters();
+
+    const loadSound = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require("../assets/notification.mp3"),
+          { shouldPlay: false }
+        );
+        soundRef.current = sound;
+        console.log(`[${new Date().toLocaleString()}] Son chargé avec succès`);
+      } catch (error) {
+        console.error(`[${new Date().toLocaleString()}] Erreur lors du chargement du son : ${error.message}`);
+      }
+    };
+    loadSound();
+
+    const configureAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: false,
+        });
+        console.log(`[${new Date().toLocaleString()}] Session audio configurée`);
+      } catch (error) {
+        console.error(`[${new Date().toLocaleString()}] Erreur configuration audio : ${error.message}`);
+      }
+    };
+    configureAudio();
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      isFocused.current = true;
+    });
+    const unsubscribeBlur = navigation.addListener("blur", () => {
+      isFocused.current = false;
+    });
+
+    const requestPermissions = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      console.log(`[${new Date().toLocaleString()}] Statut permissions notifications : ${status}`);
+      if (status !== "granted") {
+        console.warn("Permissions de notification refusées");
+      }
+    };
+    requestPermissions();
+
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(error => {
+          console.error(`[${new Date().toLocaleString()}] Erreur lors du démontage du son : ${error.message}`);
+        });
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+      }
+      unsubscribe();
+      unsubscribeBlur();
+    };
+  }, [navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>ECAScanPhone - Messages</Text>
+      <Text style={styles.title}>Alarmes - Messages</Text>
 
       {isSubscriptionExpired ? (
         <View style={{ alignItems: "center" }}>
@@ -358,7 +407,7 @@ const MessagesScreen = ({
                 onPress={() => toggleFilter("info")}
               >
                 <Text style={[styles.messageFilterText, messageFilters.info ? styles.messageFilterTextActive : {}]}>
-                  Info
+                  Info {"\n"} (Canton VD)
                 </Text>
               </TouchableOpacity>
             )}
@@ -368,7 +417,7 @@ const MessagesScreen = ({
                 onPress={() => toggleFilter("prioritaire")}
               >
                 <Text style={[styles.messageFilterText, messageFilters.prioritaire ? styles.messageFilterTextActive : {}]}>
-                  Prioritaire
+                  Prioritaire {"\n"} (SDIS BV)
                 </Text>
               </TouchableOpacity>
             )}
@@ -378,7 +427,7 @@ const MessagesScreen = ({
                 onPress={() => toggleFilter("debug")}
               >
                 <Text style={[styles.messageFilterText, messageFilters.debug ? styles.messageFilterTextActive : {}]}>
-                  Debug
+                  Debug {"\n"} (Tests PP1)
                 </Text>
               </TouchableOpacity>
             )}
@@ -396,11 +445,23 @@ const MessagesScreen = ({
 
           <FlatList
             data={filteredMessages}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item) => item.id ? item.id.toString() : `${item.timestamp}-${Math.random().toString(36).substr(2, 9)}`}
             renderItem={renderMessage}
             ListEmptyComponent={<Text style={styles.info}>Aucun message</Text>}
+            ListFooterComponent={
+              <TouchableOpacity
+                style={[styles.secondaryButton, { marginVertical: 10 }]}
+                onPress={handleLoadMore}
+                disabled={loading}
+              >
+                <Icon name="expand-more" size={20} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
+                  Charger plus
+                </Text>
+              </TouchableOpacity>
+            }
             refreshing={loading}
-            onRefresh={loadMessagesFromStorage}
+            onRefresh={() => loadMessagesFromStorage(false)}
             contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
           />
 
@@ -420,11 +481,12 @@ const MessagesScreen = ({
       )}
 
       <WebSocket
+        ref={wsRef}
         url="ws://84.234.18.3:8080"
-        onOpen={() => console.log("WebSocket connecté avec succès")}
+        onOpen={handleWsConnect}
         onMessage={handleWebSocketMessage}
         onError={(error) => console.error("Détails erreur WebSocket :", JSON.stringify(error))}
-        onClose={(event) => console.log("WebSocket déconnecté :", event ? `${event.code} - ${event.reason}` : "Événement non défini")}
+        onClose={handleWsDisconnect}
         reconnect
       />
     </SafeAreaView>

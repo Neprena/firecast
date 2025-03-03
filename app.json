@@ -38,7 +38,7 @@
     },
     "owner": "neprena",
     "notification": {
-      "iosDisplayInForeground": true,
+      "iosDisplayInForeground": false,
       "androidMode": "default",
       "androidCollapsedTitle": "Nouvelle alerte",
       "androidSound": "./assets/sounds/notification_sound.mp3"
