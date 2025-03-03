@@ -1,5 +1,3 @@
-// styles.js
-
 import { StyleSheet } from "react-native";
 
 // Styles pour le thème clair
@@ -15,7 +13,7 @@ export const lightStyles = StyleSheet.create({
     color: "#333",
     textAlign: "left",
     marginTop: 20,
-    marginBottom:10,
+    marginBottom: 10,
     marginHorizontal: 20,
   },
   subtitle: {
@@ -52,14 +50,14 @@ export const lightStyles = StyleSheet.create({
     color: "#333",
   },
   messageContainer: {
-  marginHorizontal: 10,
-  marginVertical: 10,
-  padding: 15,
-  backgroundColor: "#f8f9fa",
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: "#ddd",
-},
+    marginHorizontal: 10,
+    marginVertical: 10,
+    padding: 15,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
   timestamp: {
     fontSize: 12,
     color: "#666",
@@ -122,7 +120,6 @@ export const lightStyles = StyleSheet.create({
     fontWeight: "bold",
     flexShrink: 1,
     minWidth: 0,
-    flex: 1,
     textAlign: "center",
   },
   buttonIcon: {
@@ -185,12 +182,12 @@ export const lightStyles = StyleSheet.create({
   filterButton: {
     flex: 1,
     backgroundColor: "#ccc",
-    paddingVertical: 12, // Augmenté de 8 à 12 pour plus de hauteur
-    paddingHorizontal: 15, // Légèrement augmenté pour cohérence
+    paddingVertical: 12,
+    paddingHorizontal: 15,
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 2,
-    minHeight: 40, // Ajouté pour garantir une hauteur minimale
+    minHeight: 40,
   },
   messageFilterButton: {
     flex: 1,
@@ -198,18 +195,18 @@ export const lightStyles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 5,
     marginRight: 10,
-    backgroundColor: "#f0f0f0", // Désactivé, gris clair
+    backgroundColor: "#f0f0f0",
   },
   messageFilterButtonActive: {
-    backgroundColor: "#007BFF", // Activé, bleu
+    backgroundColor: "#007BFF",
   },
   messageFilterText: {
     fontSize: 14,
     textAlign: "center",
-    color: "#000", // Désactivé, noir
+    color: "#000",
   },
   messageFilterTextActive: {
-    color: "#fff", // Activé, blanc
+    color: "#fff",
   },
   addContainer: {
     marginHorizontal: 10,
@@ -227,9 +224,11 @@ export const lightStyles = StyleSheet.create({
   },
   roleButton: {
     backgroundColor: "#e9ecef",
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 15,
     borderRadius: 5,
+    minWidth: 100, // Ajouté pour garantir la taille
+    alignItems: "center", // Centrer le texte
   },
   roleButtonSelected: {
     backgroundColor: "#007AFF",
@@ -290,14 +289,14 @@ export const darkStyles = StyleSheet.create({
     color: "#fff",
   },
   messageContainer: {
-  marginHorizontal: 10,
-  marginVertical: 10,
-  padding: 15,
-  backgroundColor: "#2c2c2c",
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: "#444",
-},
+    marginHorizontal: 10,
+    marginVertical: 10,
+    padding: 15,
+    backgroundColor: "#2c2c2c",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#444",
+  },
   timestamp: {
     fontSize: 12,
     color: "#aaa",
@@ -360,7 +359,6 @@ export const darkStyles = StyleSheet.create({
     fontWeight: "bold",
     flexShrink: 1,
     minWidth: 0,
-    flex: 1,
     textAlign: "center",
   },
   buttonIcon: {
@@ -420,13 +418,13 @@ export const darkStyles = StyleSheet.create({
   },
   filterButton: {
     backgroundColor: "#343a40",
-    paddingVertical: 12, // Augmenté de 8 à 12 pour plus de hauteur
+    paddingVertical: 12,
     paddingHorizontal: 15,
     borderRadius: 5,
     alignItems: "center",
-    minHeight: 40, // Ajouté pour garantir une hauteur minimale
-    flex: 1, // Conservé pour l’étirement horizontal
-    marginHorizontal: 2, // Ajouté pour un léger espacement
+    minHeight: 40,
+    flex: 1,
+    marginHorizontal: 2,
   },
   messageFilterButton: {
     flex: 1,
@@ -434,18 +432,18 @@ export const darkStyles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 5,
     marginRight: 10,
-    backgroundColor: "#333", // Désactivé, gris foncé
+    backgroundColor: "#333",
   },
   messageFilterButtonActive: {
-    backgroundColor: "#1E90FF", // Activé, bleu plus clair pour contraste
+    backgroundColor: "#1E90FF",
   },
   messageFilterText: {
     fontSize: 14,
     textAlign: "center",
-    color: "#ccc", // Désactivé, gris clair
+    color: "#ccc",
   },
   messageFilterTextActive: {
-    color: "#fff", // Activé, blanc
+    color: "#fff",
   },
   addContainer: {
     marginHorizontal: 10,
@@ -463,9 +461,11 @@ export const darkStyles = StyleSheet.create({
   },
   roleButton: {
     backgroundColor: "#343a40",
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 15,
     borderRadius: 5,
+    minWidth: 100, // Ajouté pour garantir la taille
+    alignItems: "center", // Centrer le texte
   },
   roleButtonSelected: {
     backgroundColor: "#1e90ff",

@@ -101,7 +101,7 @@ const AdminScreen = ({ navigation, styles, email }) => {
         }),
       });
       const text = await response.text();
-      console.log(`Réponse brute SedisabledResponse brute pour ${targetEmail} : ${text}`);
+      console.log(`Réponse brute pour ${targetEmail} : ${text}`);
       const json = JSON.parse(text);
       if (!response.ok) throw new Error(json.error || "Erreur lors de la mise à jour");
       Alert.alert("Succès", `Utilisateur ${currentActive ? "désactivé" : "activé"} avec succès`);
@@ -127,8 +127,8 @@ const AdminScreen = ({ navigation, styles, email }) => {
           styles.toggleButton,
           { 
             backgroundColor: item.isActive ? styles.logoutButton.backgroundColor : styles.button.backgroundColor,
-            minWidth: 150, // Largeur minimale pour éviter le retour à la ligne
-            paddingHorizontal: 10, // Ajoute un padding pour élargir
+            minWidth: 150,
+            paddingHorizontal: 10,
           },
         ]}
         onPress={() => toggleUserActive(item.email, item.isActive)}
@@ -282,19 +282,40 @@ const AdminScreen = ({ navigation, styles, email }) => {
               style={[styles.roleButton, newRole === "normal" && styles.roleButtonSelected]}
               onPress={() => setNewRole("normal")}
             >
-              <Text style={styles.buttonText}>Normal</Text>
+              <Text
+                style={[styles.buttonText, { width: 100 }]}
+                allowFontScaling={false}
+                numberOfLines={1}
+                ellipsizeMode="none"
+              >
+                Normal
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.roleButton, newRole === "VIP" && styles.roleButtonSelected]}
               onPress={() => setNewRole("VIP")}
             >
-              <Text style={styles.buttonText}>VIP</Text>
+              <Text
+                style={[styles.buttonText, { width: 100 }]}
+                allowFontScaling={false}
+                numberOfLines={1}
+                ellipsizeMode="none"
+              >
+                VIP
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.roleButton, newRole === "admin" && styles.roleButtonSelected]}
               onPress={() => setNewRole("admin")}
             >
-              <Text style={styles.buttonText}>Admin</Text>
+              <Text
+                style={[styles.buttonText, { width: 100 }]}
+                allowFontScaling={false}
+                numberOfLines={1}
+                ellipsizeMode="none"
+              >
+                Admin
+              </Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.button} onPress={handleAddUser}>
