@@ -5,7 +5,7 @@
     "version": "0.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "ecascanphone",
+    "scheme": "ecascan",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,20 +13,13 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.neprena.ecascan",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.neprena.ecascan",
-      "buildNumber": "0.0.5",
-      "icon": {
-        "dark": "./assets/images/icon.png",
-        "light": "./assets/images/icon.png",
-        "tinted": "./assets/images/icon.png"
-      }
+      "buildNumber": "0.0.5"
     },
     "android": {
       "adaptiveIcon": {
