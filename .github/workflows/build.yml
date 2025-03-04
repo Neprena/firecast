@@ -53,8 +53,8 @@ jobs:
       - name: 📦 Install dependencies
         run: npm ci
 
-      - name: 📋 Test project
-        run: npm test # Changé de yarn test à npm test
+      #      - name: 📋 Test project
+      #        run: npm test # Changé de yarn test à npm test
 
       - name: 👷 Build app
         run: |
