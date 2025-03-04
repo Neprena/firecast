@@ -65,8 +65,8 @@ const MessageDetail = ({ route, navigation, styles }) => {
           setRegion({
             latitude: lat,
             longitude: lng,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
           });
           setLoading(false);
         } else {

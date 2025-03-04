@@ -79,7 +79,7 @@ export const lightStyles = StyleSheet.create({
   button: {
     backgroundColor: "#007AFF",
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30, // Augmenté pour plus d’espace
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -90,7 +90,7 @@ export const lightStyles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: "#6c757d",
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30, // Augmenté pour plus d’espace
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -101,7 +101,7 @@ export const lightStyles = StyleSheet.create({
   logoutButton: {
     backgroundColor: "#dc3545",
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30, // Augmenté pour plus d’espace
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -122,9 +122,11 @@ export const lightStyles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
-    flexShrink: 1,
-    minWidth: 0,
     textAlign: "center",
+    flex: 1,            // Prend tout l’espace disponible après l’icône
+    flexShrink: 1,      // Rétrécit si nécessaire
+    flexWrap: "wrap",   // Autorise le wrapping
+    minWidth: 0,        // Évite les débordements
   },
   buttonIcon: {
     marginRight: 5,
@@ -337,7 +339,7 @@ export const darkStyles = StyleSheet.create({
   button: {
     backgroundColor: "#1e90ff",
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30, // Augmenté pour plus d’espace
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -348,7 +350,7 @@ export const darkStyles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: "#6c757d",
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30, // Augmenté pour plus d’espace
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -359,7 +361,7 @@ export const darkStyles = StyleSheet.create({
   logoutButton: {
     backgroundColor: "#dc3545",
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 30, // Augmenté pour plus d’espace
     borderRadius: 8,
     alignItems: "center",
     marginHorizontal: 10,
@@ -381,9 +383,11 @@ export const darkStyles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
-    flexShrink: 1,
-    minWidth: 0,
     textAlign: "center",
+    flex: 1,            // Prend tout l’espace disponible après l’icône
+    flexShrink: 1,      // Rétrécit si nécessaire
+    flexWrap: "wrap",   // Autorise le wrapping
+    minWidth: 0,        // Évite les débordements
   },
   buttonIcon: {
     marginRight: 5,
