@@ -36,6 +36,11 @@ export const lightStyles = StyleSheet.create({
     minHeight: 50,
     width: "95%",
   },
+  inputText: {
+    flex: 1,
+    color: "#333",
+    placeholderTextColor: "#666",
+  },
   inputIcon: {
     marginRight: 5,
   },
@@ -286,6 +291,11 @@ export const darkStyles = StyleSheet.create({
     backgroundColor: "#1e1e1e",
     minHeight: 50,
     width: "95%",
+  },
+  inputText: {
+    flex: 1,
+    color: "#eee",
+    placeholderTextColor: "#aaa",
   },
   inputIcon: {
     marginRight: 5,

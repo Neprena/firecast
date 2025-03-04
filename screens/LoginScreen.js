@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform } from "react-native";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image, KeyboardAvoidingView, Platform } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import Constants from "expo-constants";
 
@@ -12,12 +12,16 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   const [loading, setLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState("Vérification... ⏳");
   const [serverOnline, setServerOnline] = useState(null);
-  const timeoutIdRef = useRef(null); // Référence pour timeoutId
+  const timeoutIdRef = useRef(null);
+
+  useEffect(() => {
+    console.log(`[${new Date().toLocaleString()}] Styles inputText :`, styles.inputText);
+  }, [styles]);
 
   useEffect(() => {
     const checkServerStatus = async () => {
       const controller = new AbortController();
-      timeoutIdRef.current = setTimeout(() => controller.abort(), 5000); // Timeout de 5 secondes
+      timeoutIdRef.current = setTimeout(() => controller.abort(), 5000);
 
       try {
         const response = await fetch(`${API_URL}/login`, {
@@ -54,7 +58,7 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
     };
 
     checkServerStatus();
-    const interval = setInterval(checkServerStatus, 10000); // Vérifie toutes les 10 secondes
+    const interval = setInterval(checkServerStatus, 10000);
     return () => {
       clearInterval(interval);
       if (timeoutIdRef.current) {
@@ -65,7 +69,7 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
 
   const performLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Erreur", "Veuillez entrer un email et un mot de passe.");
+      alert("Erreur: Veuillez entrer un email et un mot de passe.");
       return;
     }
     setLoading(true);
@@ -77,7 +81,7 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
       console.log(`[${new Date().toLocaleString()}] Connexion réussie pour ${email}`);
     } catch (error) {
       console.error(`[${new Date().toLocaleString()}] Échec de la connexion : ${error.message}`);
-      Alert.alert("Erreur", error.message || "Erreur lors de la connexion");
+      alert(`Erreur: ${error.message || "Erreur lors de la connexion"}`);
     } finally {
       setLoading(false);
     }
@@ -90,12 +94,27 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
 
         <View style={styles.input}>
           <Icon name="email" size={20} color={styles.inputIcon?.color || "#666"} style={styles.inputIcon} />
-          <TextInput style={{ flex: 1, color: styles.messageText?.color || "#333" }} placeholder="Email" value={email} onChangeText={setLocalEmail} autoCapitalize="none" keyboardType="email-address" />
+          <TextInput
+            style={styles.inputText}
+            placeholder="Email"
+            placeholderTextColor={styles.inputText.placeholderTextColor} // Extrait dynamiquement
+            value={email}
+            onChangeText={setLocalEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
         </View>
 
         <View style={styles.input}>
           <Icon name="lock" size={20} color={styles.inputIcon?.color || "#666"} style={styles.inputIcon} />
-          <TextInput style={{ flex: 1, color: styles.messageText?.color || "#333" }} placeholder="Mot de passe" value={password} onChangeText={setLocalPassword} secureTextEntry />
+          <TextInput
+            style={styles.inputText}
+            placeholder="Mot de passe"
+            placeholderTextColor={styles.inputText.placeholderTextColor} // Extrait dynamiquement
+            value={password}
+            onChangeText={setLocalPassword}
+            secureTextEntry
+          />
         </View>
 
         <TouchableOpacity style={[styles.button, loading && { backgroundColor: "#aaa" }]} onPress={performLogin} disabled={loading}>
