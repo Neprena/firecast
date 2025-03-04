@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StatusBar, useColorScheme, Alert } from "react-native"; // Alert ajouté
+import { StatusBar, useColorScheme, Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
@@ -44,7 +44,7 @@ const App = () => {
       if (isConnected && email) {
         fetchUserInfo(email);
       }
-    }, 60 * 100); // Note : 60 * 100 = 6000ms (6s), peut-être voulu 60 * 1000 (1min) ?
+    }, 60 * 100);
 
     return () => clearInterval(interval);
   }, [isConnected, email]);
@@ -144,6 +144,10 @@ const App = () => {
 
   return (
     <NavigationContainer>
+      <StatusBar
+        style={isDarkMode ? "light" : "dark"}
+        backgroundColor={isDarkMode ? "#121212" : "#fff"} // Ajout de backgroundColor
+      />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
