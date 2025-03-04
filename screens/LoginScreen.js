@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image } from "react-native";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import Constants from "expo-constants"; // Pour récupérer la version
+import Constants from "expo-constants";
 
 const API_URL = "https://api.ecascan.npna.ch";
-const APP_VERSION = Constants.expoConfig?.version || "N/A"; // Version depuis app.json via Constants
+const APP_VERSION = Constants.expoConfig?.version || "N/A";
 
 const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setParentPassword, handleLogin, styles }) => {
   const [email, setLocalEmail] = useState("");
@@ -13,7 +13,6 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   const [serverStatus, setServerStatus] = useState("Vérification... ⏳");
   const [serverOnline, setServerOnline] = useState(null);
 
-  // Vérification du statut du serveur
   useEffect(() => {
     const checkServerStatus = async () => {
       try {
@@ -25,8 +24,6 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
           body: JSON.stringify({ email: "check@ecascan.local", password: "test" }),
           timeout: 5000,
         });
-        //console.log(`[${new Date().toLocaleString()}] Réponse serveur : Status ${response.status}, OK: ${response.ok}`);
-        
         if (response.ok || response.status === 401) {
           setServerStatus("En ligne ✅");
           setServerOnline(true);
@@ -68,68 +65,47 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
 
   return (
     <SafeAreaView style={styles.container}>
-      <Image
-        source={require("../assets/logo.png")}
-        style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }}
-      />
-
-      <View style={styles.input}>
-        <Icon name="email" size={20} color="#666" style={styles.inputIcon} />
-        <TextInput
-          style={{ flex: 1 }}
-          placeholder="Email"
-          value={email}
-          onChangeText={setLocalEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-      </View>
-
-      <View style={styles.input}>
-        <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
-        <TextInput
-          style={{ flex: 1 }}
-          placeholder="Mot de passe"
-          value={password}
-          onChangeText={setLocalPassword}
-          secureTextEntry
-        />
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, loading && { backgroundColor: "#aaa" }]}
-        onPress={performLogin}
-        disabled={loading}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"} // Déplace le contenu sur Android
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "android" ? -50 : 0} // Ajustement pour Android
       >
-        <Icon name="login" size={20} color="#fff" style={styles.buttonIcon} />
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
+        <Image source={require("../assets/logo.png")} style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }} />
+
+        <View style={styles.input}>
+          <Icon name="email" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput style={{ flex: 1 }} placeholder="Email" value={email} onChangeText={setLocalEmail} autoCapitalize="none" keyboardType="email-address" />
+        </View>
+
+        <View style={styles.input}>
+          <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
+          <TextInput style={{ flex: 1 }} placeholder="Mot de passe" value={password} onChangeText={setLocalPassword} secureTextEntry />
+        </View>
+
+        <TouchableOpacity style={[styles.button, loading && { backgroundColor: "#aaa" }]} onPress={performLogin} disabled={loading}>
+          <Icon name="login" size={20} color="#fff" style={styles.buttonIcon} />
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
+              Se connecter
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Statut serveur et version en bas avec marge dans le flux */}
+        <View style={{ marginTop: 20, alignItems: "center" }}>
           <Text
-            style={styles.buttonText}
-            allowFontScaling={false}
-            numberOfLines={1}
-            ellipsizeMode="none"
+            style={{
+              color: serverOnline === null ? "#666" : serverOnline ? "green" : "red",
+              fontSize: 12,
+              textAlign: "center",
+            }}
           >
-            Se connecter
+            {serverStatus} | Version {APP_VERSION}
           </Text>
-        )}
-      </TouchableOpacity>
-
-      {/* Statut serveur et version en bas avec marge */}
-      <Text
-        style={{
-          color: serverOnline === null ? "#666" : serverOnline ? "green" : "red",
-          fontSize: 12,
-          textAlign: "center",
-          position: "absolute",
-          bottom: 20,
-          left: 0,
-          right: 0,
-        }}
-      >
-        {serverStatus} | Version {APP_VERSION}
-      </Text>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
