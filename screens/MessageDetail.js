@@ -1,123 +1,137 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { SafeAreaView, View, Text, TouchableOpacity, useColorScheme, Alert } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Import corrigé
 
-const MessageDetail = ({ navigation, route, styles }) => {
-  const { message } = route.params; // Objet sérialisé { message, timestamp, type }
-  const [coordinates, setCoordinates] = useState(null); // { latitude, longitude }
+// Style personnalisé pour le mode sombre (spécifique à MapView)
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#38414e" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#212a37" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9ca5b3" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#17263c" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#515c6d" }],
+  },
+];
+
+const GOOGLE_MAPS_API_KEY = "AIzaSyAM54lhiYraHQ9WG-Nm49ZyNZc9pbIu0Lk";
+
+const MessageDetail = ({ route, navigation, styles }) => {
+  const { message } = route.params;
+  const isDarkMode = useColorScheme() === "dark";
+  const [mapType, setMapType] = useState("standard");
+  const [region, setRegion] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Ta clé API Google
-  const GOOGLE_API_KEY = "AIzaSyAM54lhiYraHQ9WG-Nm49ZyNZc9pbIu0Lk";
-
+  // Géocodage de l'adresse
   useEffect(() => {
-    geocodeMessage(message.message);
-  }, [message]);
-
-  const geocodeMessage = async (text) => {
-    setLoading(true);
-    console.log(`[${new Date().toLocaleString()}] Début géocodage pour le message :`, text);
-
-    // Vérifie d’abord dans le cache local
-    try {
-      const cachedCoords = await AsyncStorage.getItem(`geocode_${text}`);
-      if (cachedCoords) {
-        const coords = JSON.parse(cachedCoords);
-        console.log(`[${new Date().toLocaleString()}] Coordonnées trouvées dans le cache :`, coords);
-        setCoordinates(coords);
-        setLoading(false);
-        return;
-      }
-    } catch (error) {
-      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la lecture du cache :`, error.message);
-    }
-
-    // Si pas dans le cache, requête API
-    try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(text)}&key=${GOOGLE_API_KEY}`;
-      console.log(`[${new Date().toLocaleString()}] URL de la requête :`, url);
-
-      const response = await fetch(url);
-      console.log(`[${new Date().toLocaleString()}] Statut de la réponse HTTP :`, response.status);
-
-      const data = await response.json();
-      console.log(`[${new Date().toLocaleString()}] Réponse de Google Geocoding :`, data);
-
-      if (data.status === "OK" && data.results.length > 0) {
-        const coords = {
-          latitude: data.results[0].geometry.location.lat,
-          longitude: data.results[0].geometry.location.lng,
-        };
-        console.log(`[${new Date().toLocaleString()}] Coordonnées trouvées :`, coords);
-        setCoordinates(coords);
-
-        // Stocke dans le cache
-        try {
-          await AsyncStorage.setItem(`geocode_${text}`, JSON.stringify(coords));
-          console.log(`[${new Date().toLocaleString()}] Coordonnées stockées dans le cache pour :`, text);
-        } catch (error) {
-          console.warn(`[${new Date().toLocaleString()}] Erreur lors de l’écriture dans le cache :`, error.message);
+    const geocodeAddress = async () => {
+      try {
+        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(message.message)}&key=${GOOGLE_MAPS_API_KEY}`);
+        const data = await response.json();
+        if (data.status === "OK" && data.results.length > 0) {
+          const { lat, lng } = data.results[0].geometry.location;
+          setRegion({
+            latitude: lat,
+            longitude: lng,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          });
+          setLoading(false);
+        } else {
+          throw new Error(`Géocodage échoué : ${data.status}`);
         }
-      } else {
-        console.log(`[${new Date().toLocaleString()}] Aucune coordonnée trouvée dans la réponse, statut :`, data.status);
-        throw new Error("Adresse non trouvée");
+      } catch (error) {
+        console.error(`[${new Date().toLocaleString()}] Erreur géocodage : ${error.message}`);
+        Alert.alert("Erreur", "Impossible de localiser l'adresse. Retour à la liste des messages.", [
+          {
+            text: "OK",
+            onPress: () => navigation.goBack(),
+          },
+        ]);
       }
-    } catch (error) {
-      console.warn(`[${new Date().toLocaleString()}] Erreur de géocodage :`, error.message);
-      Alert.alert("Erreur", "Adresse non trouvée sur la carte", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
-      setCoordinates(null);
-    } finally {
-      setLoading(false);
-      console.log(`[${new Date().toLocaleString()}] Fin du géocodage, loading :`, false);
-    }
+    };
+
+    geocodeAddress();
+  }, [message.message, navigation]);
+
+  const toggleMapType = () => {
+    setMapType((prevType) => (prevType === "standard" ? "satellite" : "standard"));
   };
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.info}>Chargement de la carte...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Détails</Text>
-      
+      <Text style={styles.title}>Détails du message</Text>
       <View style={styles.messageContainer}>
         <Text style={styles.messageText}>{message.message}</Text>
+        <Text style={styles.timestamp}>
+          {new Date(message.timestamp).toLocaleString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })}
+        </Text>
       </View>
 
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color={styles.button.backgroundColor} />
-        </View>
-      ) : coordinates ? (
-        <MapView
-          style={{ flex: 1, width: "95%", alignSelf: "center" }}
-          initialRegion={{
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-        >
-          <Marker coordinate={coordinates} />
-        </MapView>
-      ) : (
-        <Text style={[styles.info, { flex: 1 }]}>Adresse non trouvée sur la carte</Text>
-      )}
+      {/* Carte */}
+      <MapView style={styles.map} region={region} mapType={mapType} customMapStyle={isDarkMode && mapType === "standard" ? darkMapStyle : undefined}>
+        {region && <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />}
+      </MapView>
 
-      <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
+      {/* Bouton pour changer le style de carte */}
+      <TouchableOpacity style={styles.secondaryButton} onPress={toggleMapType}>
+        <Icon name={mapType === "standard" ? "satellite" : "map"} size={20} color="#fff" style={styles.buttonIcon} />
+        <Text style={styles.buttonText}>{mapType === "standard" ? "Vue Satellite" : "Vue Plan"}</Text>
+      </TouchableOpacity>
+
+      {/* Bouton retour */}
+      <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
         <Icon name="arrow-back" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text
-          style={styles.buttonText}
-          allowFontScaling={false}
-          numberOfLines={1}
-          ellipsizeMode="none"
-        >
-          Retour
-        </Text>
+        <Text style={styles.buttonText}>Retour</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

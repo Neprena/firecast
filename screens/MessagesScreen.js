@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Animated, Linking } from "react-native";
+import { SafeAreaView, Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Animated, Linking, useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import WebSocket from "react-native-websocket";
@@ -26,6 +26,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   const wsRef = useRef(null);
   const isFocused = useRef(true);
   const disconnectTimeoutRef = useRef(null);
+  const isDarkMode = useColorScheme() === "dark"; // Ajout pour détecter le thème
 
   const isSubscriptionExpired = role !== "admin" && (!subscriptionEndDate || new Date(subscriptionEndDate) < new Date());
   const canSeeDebug = role && role.toLowerCase() === "admin";
@@ -260,13 +261,13 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   const getMessageBackgroundColor = (type) => {
     switch (type) {
       case "Debug":
-        return "#9dffc7";
+        return isDarkMode ? styles.messageDebugBackground.backgroundColor : styles.messageDebugBackground.backgroundColor;
       case "Info":
-        return "#f0f0f0";
+        return isDarkMode ? styles.messageInfoBackground.backgroundColor : styles.messageInfoBackground.backgroundColor;
       case "Prioritaire":
-        return "#ff9d9d";
+        return isDarkMode ? styles.messagePrioritaireBackground.backgroundColor : styles.messagePrioritaireBackground.backgroundColor;
       default:
-        return "#f0f0f0";
+        return isDarkMode ? styles.messageInfoBackground.backgroundColor : styles.messageInfoBackground.backgroundColor;
     }
   };
 
@@ -298,7 +299,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
               second: "2-digit",
             })}
           </Text>
-          <Icon name={getMessageIcon(item.type)} size={16} color="#666" style={styles.messageIcon} />
+          <Icon name={getMessageIcon(item.type)} size={16} color={styles.messageIcon?.color || "#666"} style={styles.messageIcon} />
         </View>
       </Animated.View>
     </TouchableOpacity>
@@ -311,7 +312,6 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   });
 
   useEffect(() => {
-    // Chargement initial
     loadMessagesFromStorage();
     loadNotificationSettings();
     loadMessageFilters();
@@ -352,11 +352,10 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
     };
     requestPermissions();
 
-    // Listener pour recharger les messages au focus
     const unsubscribeFocus = navigation.addListener("focus", () => {
       isFocused.current = true;
       console.log(`[${new Date().toLocaleString()}] MessagesScreen en focus, rechargement des messages`);
-      loadMessagesFromStorage(false); // Rechargement initial (pas append)
+      loadMessagesFromStorage(false);
     });
 
     const unsubscribeBlur = navigation.addListener("blur", () => {
@@ -370,7 +369,8 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
           console.error(`[${new Date().toLocaleString()}] Erreur lors du démontage du son : ${error.message}`);
         });
       }
-      if (wsRef.current) {
+      if (wsRef.current && typeof wsRef.current.close === "function") {
+        console.log(`[${new Date().toLocaleString()}] Fermeture du WebSocket`);
         wsRef.current.close();
       }
       if (disconnectTimeoutRef.current) {
@@ -418,8 +418,8 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
           </View>
 
           <View style={styles.input}>
-            <Icon name="search" size={20} color="#666" style={styles.inputIcon} />
-            <TextInput style={{ flex: 1 }} placeholder="Rechercher dans les messages" value={searchQuery} onChangeText={handleSearch} />
+            <Icon name="search" size={20} color={styles.inputIcon?.color || "#666"} style={styles.inputIcon} />
+            <TextInput style={{ flex: 1, color: styles.messageText?.color || "#333" }} placeholder="Rechercher dans les messages" value={searchQuery} onChangeText={handleSearch} />
           </View>
 
           <FlatList

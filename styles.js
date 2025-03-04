@@ -43,7 +43,6 @@ export const lightStyles = StyleSheet.create({
     padding: 10,
     marginVertical: 5,
     borderRadius: 5,
-    backgroundColor: "#f0f0f0",
   },
   messageText: {
     fontSize: 16,
@@ -227,8 +226,8 @@ export const lightStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     borderRadius: 5,
-    minWidth: 100, // Ajouté pour garantir la taille
-    alignItems: "center", // Centrer le texte
+    minWidth: 100,
+    alignItems: "center",
   },
   roleButtonSelected: {
     backgroundColor: "#007AFF",
@@ -236,6 +235,19 @@ export const lightStyles = StyleSheet.create({
   userList: {
     flex: 1,
     width: "100%",
+  },
+  messageDebugBackground: {
+    backgroundColor: "#9dffc7",
+  },
+  messageInfoBackground: {
+    backgroundColor: "#f0f0f0",
+  },
+  messagePrioritaireBackground: {
+    backgroundColor: "#ff9d9d",
+  },
+  map: {
+    flex: 1,
+    marginVertical: 10,
   },
 });
 
@@ -251,8 +263,9 @@ export const darkStyles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
     textAlign: "left",
-    marginVertical: 10,
+    marginTop: 20,
     marginBottom: 10,
+    marginHorizontal: 20,
   },
   subtitle: {
     fontSize: 16,
@@ -271,22 +284,21 @@ export const darkStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 12,
     backgroundColor: "#1e1e1e",
-    color: "#fff",
     minHeight: 50,
-    width: "100%",
+    width: "95%",
   },
   inputIcon: {
     marginRight: 5,
+    color: "#bbb",
   },
   message: {
     padding: 10,
     marginVertical: 5,
     borderRadius: 5,
-    backgroundColor: "#1e1e1e",
   },
   messageText: {
     fontSize: 16,
-    color: "#fff",
+    color: "#eee",
   },
   messageContainer: {
     marginHorizontal: 10,
@@ -304,6 +316,7 @@ export const darkStyles = StyleSheet.create({
   },
   messageIcon: {
     marginTop: 5,
+    color: "#bbb",
   },
   info: {
     fontSize: 16,
@@ -352,6 +365,7 @@ export const darkStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     minWidth: 100,
+    backgroundColor: "#343a40",
   },
   buttonText: {
     color: "#fff",
@@ -363,6 +377,7 @@ export const darkStyles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 5,
+    color: "#fff",
   },
   toggleContainer: {
     marginHorizontal: 10,
@@ -380,10 +395,11 @@ export const darkStyles = StyleSheet.create({
   },
   toggleIcon: {
     marginRight: 10,
+    color: "#bbb",
   },
   toggleLabel: {
     fontSize: 16,
-    color: "#fff",
+    color: "#eee",
     flex: 1,
   },
   passwordChangeContainer: {
@@ -413,18 +429,20 @@ export const darkStyles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 10,
+    justifyContent: "space-between",
+    width: "95%",
+    marginBottom: 10,
+    marginHorizontal: 10,
   },
   filterButton: {
+    flex: 1,
     backgroundColor: "#343a40",
     paddingVertical: 12,
     paddingHorizontal: 15,
-    borderRadius: 5,
+    borderRadius: 8,
     alignItems: "center",
-    minHeight: 40,
-    flex: 1,
     marginHorizontal: 2,
+    minHeight: 40,
   },
   messageFilterButton: {
     flex: 1,
@@ -435,7 +453,7 @@ export const darkStyles = StyleSheet.create({
     backgroundColor: "#333",
   },
   messageFilterButtonActive: {
-    backgroundColor: "#1E90FF",
+    backgroundColor: "#1e90ff",
   },
   messageFilterText: {
     fontSize: 14,
@@ -464,13 +482,27 @@ export const darkStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     borderRadius: 5,
-    minWidth: 100, // Ajouté pour garantir la taille
-    alignItems: "center", // Centrer le texte
+    minWidth: 100,
+    alignItems: "center",
   },
   roleButtonSelected: {
     backgroundColor: "#1e90ff",
   },
   userList: {
     flex: 1,
+    width: "100%",
+  },
+  messageDebugBackground: {
+    backgroundColor: "#335533",
+  },
+  messageInfoBackground: {
+    backgroundColor: "#333333",
+  },
+  messagePrioritaireBackground: {
+    backgroundColor: "#553333",
+  },
+  map: {
+    flex: 1,
+    marginVertical: 10,
   },
 });

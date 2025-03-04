@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { StatusBar, useColorScheme } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import LoginScreen from "./screens/LoginScreen";
 import MessagesScreen from "./screens/MessagesScreen";
 import MessageDetail from "./screens/MessageDetail";
@@ -44,12 +43,13 @@ const App = () => {
       if (isConnected && email) {
         fetchUserInfo(email);
       }
-    }, 60 * 100);
+    }, 60 * 100); // 60 secondes
 
     return () => clearInterval(interval);
   }, [isConnected, email]);
 
   const fetchUserInfo = async (userEmail) => {
+    if (!userEmail) return;
     try {
       const response = await fetch(`${API_URL}/user-info`, {
         method: "POST",
@@ -122,8 +122,8 @@ const App = () => {
     }
   };
 
-  const fetchMessages = async () => {
-    if (!userData?.email) return [];
+  const fetchMessages = async (fetchEmail, endDate, startDate) => {
+    if (!fetchEmail) return [];
     try {
       const response = await fetch(`${API_URL}/messages`, {
         method: "POST",
@@ -131,7 +131,7 @@ const App = () => {
           "Content-Type": "application/json",
           "x-api-key": API_KEY,
         },
-        body: JSON.stringify({ email: userData.email }),
+        body: JSON.stringify({ email: fetchEmail, endDate, startDate }),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Erreur lors de la récupération des messages");
@@ -144,71 +144,28 @@ const App = () => {
 
   return (
     <NavigationContainer>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={isDarkMode ? "#121212" : "#fff"} />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: isDarkMode ? "#121212" : "#fff" },
         }}
       >
-        {isConnected ? (
+        {isConnected && userData ? (
           <>
             <Stack.Screen name="Messages">
-              {(props) => (
-                <MessagesScreen
-                  {...props}
-                  styles={styles}
-                  fetchMessages={fetchMessages}
-                  isConnected={isConnected}
-                  subscriptionEndDate={userData?.subscriptionEndDate}
-                  role={userData?.role}
-                  email={userData?.email}
-                />
-              )}
+              {(props) => <MessagesScreen {...props} styles={styles} fetchMessages={fetchMessages} isConnected={isConnected} subscriptionEndDate={userData.subscriptionEndDate} role={userData.role} email={userData.email} />}
             </Stack.Screen>
             <Stack.Screen name="Profile">
-              {(props) => (
-                <ProfileScreen
-                  {...props}
-                  styles={styles}
-                  email={userData.email}
-                  handleLogout={handleLogout}
-                  isConnected={isConnected}
-                  subscriptionEndDate={userData.subscriptionEndDate}
-                  role={userData.role}
-                />
-              )}
+              {(props) => <ProfileScreen {...props} styles={styles} email={userData.email} handleLogout={handleLogout} isConnected={isConnected} subscriptionEndDate={userData.subscriptionEndDate} role={userData.role} />}
             </Stack.Screen>
-            <Stack.Screen name="Admin">
-              {(props) => <AdminScreen {...props} styles={styles} email={userData.email} />}
-            </Stack.Screen>
-            <Stack.Screen name="EditUser">
-              {(props) => <EditUserScreen {...props} styles={styles} />}
-            </Stack.Screen>
-            <Stack.Screen name="MessageDetail">
-              {(props) => <MessageDetail {...props} styles={styles} />}
-            </Stack.Screen>
-            <Stack.Screen name="NotificationsSettings">
-              {(props) => (
-                <NotificationsSettingsScreen
-                  {...props}
-                  styles={styles}
-                  role={userData?.role}
-                />
-              )}
-            </Stack.Screen>
+            <Stack.Screen name="Admin">{(props) => <AdminScreen {...props} styles={styles} email={userData.email} />}</Stack.Screen>
+            <Stack.Screen name="EditUser">{(props) => <EditUserScreen {...props} styles={styles} />}</Stack.Screen>
+            <Stack.Screen name="MessageDetail">{(props) => <MessageDetail {...props} styles={styles} />}</Stack.Screen>
+            <Stack.Screen name="NotificationsSettings">{(props) => <NotificationsSettingsScreen {...props} styles={styles} role={userData.role} />}</Stack.Screen>
           </>
         ) : (
-          <Stack.Screen name="Login">
-            {(props) => (
-              <LoginScreen
-                {...props}
-                setEmail={setEmail}
-                setPassword={setPassword}
-                handleLogin={handleLogin}
-                styles={styles}
-              />
-            )}
-          </Stack.Screen>
+          <Stack.Screen name="Login">{(props) => <LoginScreen {...props} setEmail={setEmail} setPassword={setPassword} handleLogin={handleLogin} styles={styles} />}</Stack.Screen>
         )}
       </Stack.Navigator>
     </NavigationContainer>

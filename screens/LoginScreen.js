@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SafeAreaView, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import Constants from "expo-constants";
@@ -12,9 +12,13 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
   const [loading, setLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState("Vérification... ⏳");
   const [serverOnline, setServerOnline] = useState(null);
+  const timeoutIdRef = useRef(null); // Référence pour timeoutId
 
   useEffect(() => {
     const checkServerStatus = async () => {
+      const controller = new AbortController();
+      timeoutIdRef.current = setTimeout(() => controller.abort(), 5000); // Timeout de 5 secondes
+
       try {
         const response = await fetch(`${API_URL}/login`, {
           method: "POST",
@@ -22,25 +26,41 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ email: "check@ecascan.local", password: "test" }),
-          timeout: 5000,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+
         if (response.ok || response.status === 401) {
           setServerStatus("En ligne ✅");
           setServerOnline(true);
         } else {
           setServerStatus("Hors ligne ❌");
           setServerOnline(false);
+          console.warn(`[${new Date().toLocaleString()}] Serveur répondu avec statut : ${response.status}`);
         }
       } catch (error) {
-        console.warn(`[${new Date().toLocaleString()}] Erreur vérification serveur : ${error.message}`);
-        setServerStatus("Hors ligne ❌");
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+        if (error.name === "AbortError") {
+          console.warn(`[${new Date().toLocaleString()}] Timeout serveur après 5s`);
+          setServerStatus("Timeout ❌");
+        } else {
+          console.warn(`[${new Date().toLocaleString()}] Erreur vérification serveur : ${error.message}`);
+          setServerStatus("Hors ligne ❌");
+        }
         setServerOnline(false);
       }
     };
 
     checkServerStatus();
-    const interval = setInterval(checkServerStatus, 10000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkServerStatus, 10000); // Vérifie toutes les 10 secondes
+    return () => {
+      clearInterval(interval);
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+      }
+    };
   }, []);
 
   const performLogin = async () => {
@@ -65,21 +85,17 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"} // Déplace le contenu sur Android
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "android" ? -50 : 0} // Ajustement pour Android
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === "android" ? -50 : 0}>
         <Image source={require("../assets/logo.png")} style={{ width: 300, height: 300, alignSelf: "center", marginBottom: 20 }} />
 
         <View style={styles.input}>
-          <Icon name="email" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput style={{ flex: 1 }} placeholder="Email" value={email} onChangeText={setLocalEmail} autoCapitalize="none" keyboardType="email-address" />
+          <Icon name="email" size={20} color={styles.inputIcon?.color || "#666"} style={styles.inputIcon} />
+          <TextInput style={{ flex: 1, color: styles.messageText?.color || "#333" }} placeholder="Email" value={email} onChangeText={setLocalEmail} autoCapitalize="none" keyboardType="email-address" />
         </View>
 
         <View style={styles.input}>
-          <Icon name="lock" size={20} color="#666" style={styles.inputIcon} />
-          <TextInput style={{ flex: 1 }} placeholder="Mot de passe" value={password} onChangeText={setLocalPassword} secureTextEntry />
+          <Icon name="lock" size={20} color={styles.inputIcon?.color || "#666"} style={styles.inputIcon} />
+          <TextInput style={{ flex: 1, color: styles.messageText?.color || "#333" }} placeholder="Mot de passe" value={password} onChangeText={setLocalPassword} secureTextEntry />
         </View>
 
         <TouchableOpacity style={[styles.button, loading && { backgroundColor: "#aaa" }]} onPress={performLogin} disabled={loading}>
@@ -93,7 +109,6 @@ const LoginScreen = ({ navigation, setEmail: setParentEmail, setPassword: setPar
           )}
         </TouchableOpacity>
 
-        {/* Statut serveur et version en bas avec marge dans le flux */}
         <View style={{ marginTop: 20, alignItems: "center" }}>
           <Text
             style={{
