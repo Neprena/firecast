@@ -51,7 +51,7 @@ jobs:
           eas-version: latest
 
       - name: 📦 Install dependencies
-        run: npm install # Changé de yarn à npm install
+        run: npm ci
 
       - name: 📋 Test project
         run: npm test # Changé de yarn test à npm test
