@@ -38,7 +38,6 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
       const parsedSettings = storedSettings ? JSON.parse(storedSettings) : defaultSettings;
       setNotificationSettings(parsedSettings);
       console.log(`[${new Date().toLocaleString()}] Notification settings chargés :`, parsedSettings);
-      // Synchronise avec le backend
       await syncNotificationSettings(parsedSettings);
     } catch (error) {
       console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres de notifications : ${error.message}`);
@@ -97,18 +96,6 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
     }
   };
 
-  const toggleNotificationSetting = async (type) => {
-    const newSettings = { ...notificationSettings, [type]: !notificationSettings[type] };
-    setNotificationSettings(newSettings);
-    try {
-      await AsyncStorage.setItem("notificationSettings", JSON.stringify(newSettings));
-      console.log(`[${new Date().toLocaleString()}] Réglage de notification ${type} mis à jour : ${newSettings[type]}`);
-      await syncNotificationSettings(newSettings); // Synchronise avec le backend après chaque changement
-    } catch (error) {
-      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour des réglages de notification : ${error.message}`);
-    }
-  };
-
   const loadMessagesFromStorage = async (append = false, isSilent = false) => {
     const setLoading = isSilent ? setSilentLoading : setExplicitLoading;
     setLoading(true);
@@ -133,7 +120,9 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
         }));
         messagesToSet = append ? [...messagesToSet, ...newMessages] : newMessages;
         const uniqueMessages = Array.from(new Map(messagesToSet.map((item) => [item.id, item])).values());
-        console.log(`[${new Date().toLocaleString()}] Messages récupérés via fetchMessages (${startDate.toISOString()} - ${endDate.toISOString()}) : ${newMessages.length} messages`);
+        console.log(
+          `[${new Date().toLocaleString()}] Messages récupérés via fetchMessages (${startDate.toLocaleString()} - ${endDate.toLocaleString()}) : ${newMessages.length} messages`
+        );
         await AsyncStorage.setItem("messages", JSON.stringify(uniqueMessages));
         setOldestDate(startDate);
         setAllMessages((prev) => {
@@ -204,6 +193,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
     }
 
     Animated.timing(animatedMessage.fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    loadMessagesFromStorage(false, false); // Rafraîchit complètement après réception WebSocket
   };
 
   const handleSearch = (text) => {
@@ -310,6 +300,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
       (msg.type === "Debug" && messageFilters.debug && canSeeDebug) ||
       (msg.type === "Info" && messageFilters.info && canSeeInfo) ||
       (msg.type === "Prioritaire" && messageFilters.prioritaire && canSeePrioritaire);
+    //console.log(`[${new Date().toLocaleString()}] Filtrage message ID ${msg.id}: matchesSearch=${matchesSearch}, matchesType=${matchesType}, type=${msg.type}, filters=${JSON.stringify(messageFilters)}`);
     return matchesSearch && matchesType;
   });
 
@@ -373,7 +364,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
               console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son FCM : ${error.message}`);
             }
           }
-          loadMessagesFromStorage(false, true);
+          loadMessagesFromStorage(false, false); // Rafraîchit complètement après réception FCM
         }
       }
     });
@@ -516,40 +507,6 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
               Profil
             </Text>
           </TouchableOpacity>
-
-          {/* Boutons pour gérer les notifications */}
-          <View style={{ flexDirection: "row", marginVertical: 10, paddingHorizontal: 10 }}>
-            {canSeeInfo && (
-              <TouchableOpacity
-                style={[styles.messageFilterButton, notificationSettings.info ? styles.messageFilterButtonActive : {}]}
-                onPress={() => toggleNotificationSetting("info")}
-              >
-                <Text style={[styles.messageFilterText, notificationSettings.info ? styles.messageFilterTextActive : {}]}>
-                  Notifications Info
-                </Text>
-              </TouchableOpacity>
-            )}
-            {canSeePrioritaire && (
-              <TouchableOpacity
-                style={[styles.messageFilterButton, notificationSettings.prioritaire ? styles.messageFilterButtonActive : {}]}
-                onPress={() => toggleNotificationSetting("prioritaire")}
-              >
-                <Text style={[styles.messageFilterText, notificationSettings.prioritaire ? styles.messageFilterTextActive : {}]}>
-                  Notifications Prioritaire
-                </Text>
-              </TouchableOpacity>
-            )}
-            {canSeeDebug && (
-              <TouchableOpacity
-                style={[styles.messageFilterButton, notificationSettings.debug ? styles.messageFilterButtonActive : {}]}
-                onPress={() => toggleNotificationSetting("debug")}
-              >
-                <Text style={[styles.messageFilterText, notificationSettings.debug ? styles.messageFilterTextActive : {}]}>
-                  Notifications Debug
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
         </>
       )}
 

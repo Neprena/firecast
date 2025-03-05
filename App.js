@@ -146,22 +146,26 @@ const App = () => {
     }
   };
 
-  const fetchMessages = async (userEmail, endDate, startDate) => {
-    if (!userEmail) return [];
-    try {
-      const response = await fetch(`${API_URL}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-        body: JSON.stringify({ email: userEmail, endDate, startDate }),
-      });
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Erreur lors de la récupération des messages");
+const fetchMessages = async (email, endDate, startDate) => {
+  try {
+    const response = await fetch(`${API_URL}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+      body: JSON.stringify({ email, startDate, endDate }),
+    });
+    const json = await response.json();
+    if (response.ok) {
+      console.log(`[${new Date().toLocaleString()}] Réponse fetchMessages :`, JSON.stringify(json.map(m => ({ id: m.id, timestamp: m.timestamp }))));
       return json;
-    } catch (error) {
-      console.warn("Erreur dans fetchMessages :", error.message);
+    } else {
+      console.warn(`[${new Date().toLocaleString()}] Erreur fetchMessages : ${json.error}`);
       return [];
     }
-  };
+  } catch (error) {
+    console.error(`[${new Date().toLocaleString()}] Erreur réseau fetchMessages : ${error.message}`);
+    return [];
+  }
+};
 
   const registerForPushNotifications = async (userEmail) => {
     if (!Device.isDevice) {
