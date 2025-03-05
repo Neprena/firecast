@@ -54,11 +54,12 @@
       [
         "@react-native-firebase/app",
         {
-          "androidGoogleServicesFile": "./android/app/google-services.json",
-          "iosGoogleServicesFile": "./ios/ecascan/GoogleService-Info.plist"
+          "androidGoogleServicesFile": "./google-services.json",
+          "iosGoogleServicesFile": "./GoogleService-Info.plist"
         }
       ],
-      "@react-native-firebase/messaging"
+      "@react-native-firebase/messaging",
+      "expo-build-properties"
     ]
   }
 }

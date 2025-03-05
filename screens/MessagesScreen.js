@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, Text, View, FlatList, TouchableOpacity, TextInput, Animated, Linking, useColorScheme } from "react-native";
+import { SafeAreaView, Text, View, FlatList, TouchableOpacity, TextInput, Animated, Linking, useColorScheme, ActivityIndicator } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import WebSocket from "react-native-websocket";
 import { Audio } from "expo-av";
 import { useNavigation } from "@react-navigation/native";
-import { messaging } from "../firebaseConfig"; // Changement : importation nommée avec {}
+import { messaging } from "../firebaseConfig";
+
+const API_URL = "https://api.ecascan.npna.ch";
+const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
 
 const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDate, role, email }) => {
   const navigation = useNavigation();
@@ -13,16 +16,8 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
   const [silentLoading, setSilentLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allMessages, setAllMessages] = useState([]);
-  const [notificationSettings, setNotificationSettings] = useState({
-    debug: false,
-    info: true,
-    prioritaire: false,
-  });
-  const [messageFilters, setMessageFilters] = useState({
-    debug: false,
-    info: true,
-    prioritaire: false,
-  });
+  const [notificationSettings, setNotificationSettings] = useState({ debug: false, info: true, prioritaire: false });
+  const [messageFilters, setMessageFilters] = useState({ debug: false, info: true, prioritaire: false });
   const [wsConnected, setWsConnected] = useState(true);
   const [oldestDate, setOldestDate] = useState(new Date());
   const soundRef = useRef(null);
@@ -39,17 +34,33 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
   const loadNotificationSettings = async () => {
     try {
       const storedSettings = await AsyncStorage.getItem("notificationSettings");
-      const parsedSettings = storedSettings
-        ? JSON.parse(storedSettings)
-        : {
-            debug: canSeeDebug ? false : false,
-            info: canSeeInfo ? true : false,
-            prioritaire: canSeePrioritaire ? false : false,
-          };
+      const defaultSettings = { debug: canSeeDebug ? false : false, info: canSeeInfo ? true : false, prioritaire: canSeePrioritaire ? false : false };
+      const parsedSettings = storedSettings ? JSON.parse(storedSettings) : defaultSettings;
       setNotificationSettings(parsedSettings);
       console.log(`[${new Date().toLocaleString()}] Notification settings chargés :`, parsedSettings);
+      // Synchronise avec le backend
+      await syncNotificationSettings(parsedSettings);
     } catch (error) {
       console.warn(`[${new Date().toLocaleString()}] Erreur lors du chargement des paramètres de notifications : ${error.message}`);
+    }
+  };
+
+  const syncNotificationSettings = async (settings) => {
+    try {
+      const token = await messaging().getToken();
+      const response = await fetch(`${API_URL}/register-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        body: JSON.stringify({ email, token, notificationSettings: settings }),
+      });
+      const json = await response.json();
+      if (response.ok) {
+        console.log(`[${new Date().toLocaleString()}] Notification settings synchronisés avec le backend :`, json);
+      } else {
+        console.warn(`[${new Date().toLocaleString()}] Échec de la synchronisation des notification settings :`, json);
+      }
+    } catch (error) {
+      console.error(`[${new Date().toLocaleString()}] Erreur lors de la synchronisation des notification settings : ${error.message}`);
     }
   };
 
@@ -65,11 +76,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
         });
         console.log(`[${new Date().toLocaleString()}] Filtres de messages chargés :`, parsedFilters);
       } else {
-        const defaultFilters = {
-          debug: canSeeDebug ? false : false,
-          info: canSeeInfo ? true : false,
-          prioritaire: canSeePrioritaire ? false : false,
-        };
+        const defaultFilters = { debug: canSeeDebug ? false : false, info: canSeeInfo ? true : false, prioritaire: canSeePrioritaire ? false : false };
         await AsyncStorage.setItem("messageFilters", JSON.stringify(defaultFilters));
         setMessageFilters(defaultFilters);
         console.log(`[${new Date().toLocaleString()}] Filtres de messages initialisés par défaut :`, defaultFilters);
@@ -87,6 +94,18 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
       console.log(`[${new Date().toLocaleString()}] Filtre ${type} mis à jour : ${newFilters[type]}`);
     } catch (error) {
       console.warn(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour des filtres : ${error.message}`);
+    }
+  };
+
+  const toggleNotificationSetting = async (type) => {
+    const newSettings = { ...notificationSettings, [type]: !notificationSettings[type] };
+    setNotificationSettings(newSettings);
+    try {
+      await AsyncStorage.setItem("notificationSettings", JSON.stringify(newSettings));
+      console.log(`[${new Date().toLocaleString()}] Réglage de notification ${type} mis à jour : ${newSettings[type]}`);
+      await syncNotificationSettings(newSettings); // Synchronise avec le backend après chaque changement
+    } catch (error) {
+      console.warn(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour des réglages de notification : ${error.message}`);
     }
   };
 
@@ -138,11 +157,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
 
   const handleWebSocketMessage = async (event) => {
     const newMessage = JSON.parse(event.data);
-    const animatedMessage = {
-      ...newMessage,
-      fadeAnim: new Animated.Value(0),
-      isNew: true,
-    };
+    const animatedMessage = { ...newMessage, fadeAnim: new Animated.Value(0), isNew: true };
 
     if (isSubscriptionExpired) {
       console.log(`[${new Date().toLocaleString()}] Message reçu mais ignoré (abonnement expiré) : ${newMessage.message}, type: ${newMessage.type}`);
@@ -153,7 +168,9 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
     const currentSettings = storedSettings ? JSON.parse(storedSettings) : notificationSettings;
 
     const shouldNotify =
-      (newMessage.type === "Debug" && currentSettings.debug && canSeeDebug) || (newMessage.type === "Info" && currentSettings.info && canSeeInfo) || (newMessage.type === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
+      (newMessage.type === "Debug" && currentSettings.debug && canSeeDebug) ||
+      (newMessage.type === "Info" && currentSettings.info && canSeeInfo) ||
+      (newMessage.type === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
 
     console.log(`[${new Date().toLocaleString()}] Évaluation de shouldNotify pour ${newMessage.type} :`, {
       shouldNotify,
@@ -168,13 +185,9 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
       const updatedMessages = [animatedMessage, ...prevMessages];
       const uniqueMessages = Array.from(new Map(updatedMessages.map((item) => [item.id, item])).values());
       console.log(`[${new Date().toLocaleString()}] Nouveau message reçu via WebSocket : ${newMessage.message}, type: ${newMessage.type}`);
-      AsyncStorage.setItem("messages", JSON.stringify(uniqueMessages))
-        .then(() => {
-          console.log(`[${new Date().toLocaleString()}] Messages mis à jour dans AsyncStorage : ${uniqueMessages.length} messages`);
-        })
-        .catch((error) => {
-          console.error(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour d'AsyncStorage : ${error.message}`);
-        });
+      AsyncStorage.setItem("messages", JSON.stringify(uniqueMessages)).catch((error) =>
+        console.error(`[${new Date().toLocaleString()}] Erreur lors de la mise à jour d'AsyncStorage : ${error.message}`)
+      );
       return uniqueMessages;
     });
 
@@ -184,19 +197,13 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
         if (status.isLoaded) {
           await soundRef.current.replayAsync();
           console.log(`[${new Date().toLocaleString()}] Son joué pour ${newMessage.type}`);
-        } else {
-          console.warn(`[${new Date().toLocaleString()}] Son non chargé pour ${newMessage.type}`);
         }
       } catch (error) {
         console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
       }
     }
 
-    Animated.timing(animatedMessage.fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+    Animated.timing(animatedMessage.fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   };
 
   const handleSearch = (text) => {
@@ -208,10 +215,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
     try {
       const response = await fetch("https://api.ecascan.npna.ch/subscribe", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc",
-        },
+        headers: { "Content-Type": "application/json", "x-api-key": "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc" },
         body: JSON.stringify({ email, returnUrl: "ecascanphone://payment-success" }),
       });
       const json = await response.json();
@@ -302,7 +306,10 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
 
   const filteredMessages = allMessages.filter((msg) => {
     const matchesSearch = msg.message.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = (msg.type === "Debug" && messageFilters.debug && canSeeDebug) || (msg.type === "Info" && messageFilters.info && canSeeInfo) || (msg.type === "Prioritaire" && messageFilters.prioritaire && canSeePrioritaire);
+    const matchesType =
+      (msg.type === "Debug" && messageFilters.debug && canSeeDebug) ||
+      (msg.type === "Info" && messageFilters.info && canSeeInfo) ||
+      (msg.type === "Prioritaire" && messageFilters.prioritaire && canSeePrioritaire);
     return matchesSearch && matchesType;
   });
 
@@ -339,38 +346,57 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
     configureAudio();
 
     const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
-      console.log("Notification FCM reçue en avant-plan :", remoteMessage);
+      console.log("Notification FCM reçue en avant-plan :", JSON.stringify(remoteMessage, null, 2));
       const data = remoteMessage.data || {};
       if (data.type === "new_message" && !isSubscriptionExpired) {
         const storedSettings = await AsyncStorage.getItem("notificationSettings");
         const currentSettings = storedSettings ? JSON.parse(storedSettings) : notificationSettings;
-        const messageType = remoteMessage.notification?.title?.includes("Prioritaire") ? "Prioritaire" : remoteMessage.notification?.title?.includes("Info") ? "Info" : "Debug";
-        const shouldNotify = (messageType === "Debug" && currentSettings.debug && canSeeDebug) || (messageType === "Info" && currentSettings.info && canSeeInfo) || (messageType === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
+        const messageType = remoteMessage.notification?.title?.includes("Prioritaire")
+          ? "Prioritaire"
+          : remoteMessage.notification?.title?.includes("Info")
+          ? "Info"
+          : "Debug";
+        const shouldNotify =
+          (messageType === "Debug" && currentSettings.debug && canSeeDebug) ||
+          (messageType === "Info" && currentSettings.info && canSeeInfo) ||
+          (messageType === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
 
-        if (shouldNotify && isFocused.current && soundRef.current) {
-          try {
-            const status = await soundRef.current.getStatusAsync();
-            if (status.isLoaded) {
-              await soundRef.current.replayAsync();
-              console.log(`[${new Date().toLocaleString()}] Son joué pour FCM ${messageType}`);
+        if (shouldNotify) {
+          if (isFocused.current && soundRef.current) {
+            try {
+              const status = await soundRef.current.getStatusAsync();
+              if (status.isLoaded) {
+                await soundRef.current.replayAsync();
+                console.log(`[${new Date().toLocaleString()}] Son joué pour FCM ${messageType}`);
+              }
+            } catch (error) {
+              console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son FCM : ${error.message}`);
             }
-          } catch (error) {
-            console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son FCM : ${error.message}`);
           }
+          loadMessagesFromStorage(false, true);
         }
-
-        loadMessagesFromStorage(false, true);
       }
     });
 
     messaging().setBackgroundMessageHandler(async (remoteMessage) => {
       console.log("Notification FCM en arrière-plan reçue :", JSON.stringify(remoteMessage, null, 2));
-      if (remoteMessage.data?.type === "new_message" && !isSubscriptionExpired) {
-        console.log("Traitement du message en arrière-plan pour email:", email);
-        await loadMessagesFromStorage(false, true);
-        console.log("Messages rechargés en arrière-plan");
-      } else {
-        console.log("Message ignoré en arrière-plan : type ou abonnement invalide", remoteMessage.data?.type, isSubscriptionExpired);
+      const data = remoteMessage.data || {};
+      if (data.type === "new_message" && !isSubscriptionExpired) {
+        const storedSettings = await AsyncStorage.getItem("notificationSettings");
+        const currentSettings = storedSettings ? JSON.parse(storedSettings) : notificationSettings;
+        const messageType = remoteMessage.notification?.title?.includes("Prioritaire")
+          ? "Prioritaire"
+          : remoteMessage.notification?.title?.includes("Info")
+          ? "Info"
+          : "Debug";
+        const shouldNotify =
+          (messageType === "Debug" && currentSettings.debug && canSeeDebug) ||
+          (messageType === "Info" && currentSettings.info && canSeeInfo) ||
+          (messageType === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
+
+        if (shouldNotify) {
+          loadMessagesFromStorage(false, true);
+        }
       }
     });
 
@@ -391,7 +417,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
           console.error(`[${new Date().toLocaleString()}] Erreur lors du démontage du son : ${error.message}`);
         });
       }
-      if (wsRef.current && typeof wsRef.current.close === "function") {
+      if (wsRef.current) {
         console.log(`[${new Date().toLocaleString()}] Fermeture du WebSocket`);
         wsRef.current.close();
       }
@@ -407,11 +433,12 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Alarmes - Messages</Text>
-
       {isSubscriptionExpired ? (
         <View style={{ alignItems: "center" }}>
           <View style={styles.messageContainer}>
-            <Text style={[styles.messageText, { textAlign: "center" }]}>Votre abonnement a expiré. Renouvelez-le pour continuer à recevoir les alertes en temps réel.</Text>
+            <Text style={[styles.messageText, { textAlign: "center" }]}>
+              Votre abonnement a expiré. Renouvelez-le pour continuer à recevoir les alertes en temps réel.
+            </Text>
           </View>
           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate("Profile")}>
             <Icon name="person" size={20} color="#fff" style={styles.buttonIcon} />
@@ -424,25 +451,45 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
         <>
           <View style={{ flexDirection: "row", marginVertical: 10, paddingHorizontal: 10 }}>
             {canSeeInfo && (
-              <TouchableOpacity style={[styles.messageFilterButton, messageFilters.info ? styles.messageFilterButtonActive : {}]} onPress={() => toggleFilter("info")}>
-                <Text style={[styles.messageFilterText, messageFilters.info ? styles.messageFilterTextActive : {}]}>Info {"\n"} (Canton VD)</Text>
+              <TouchableOpacity
+                style={[styles.messageFilterButton, messageFilters.info ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleFilter("info")}
+              >
+                <Text style={[styles.messageFilterText, messageFilters.info ? styles.messageFilterTextActive : {}]}>
+                  Info {"\n"} (Canton VD)
+                </Text>
               </TouchableOpacity>
             )}
             {canSeePrioritaire && (
-              <TouchableOpacity style={[styles.messageFilterButton, messageFilters.prioritaire ? styles.messageFilterButtonActive : {}]} onPress={() => toggleFilter("prioritaire")}>
-                <Text style={[styles.messageFilterText, messageFilters.prioritaire ? styles.messageFilterTextActive : {}]}>Prioritaire {"\n"} (SDIS BV)</Text>
+              <TouchableOpacity
+                style={[styles.messageFilterButton, messageFilters.prioritaire ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleFilter("prioritaire")}
+              >
+                <Text style={[styles.messageFilterText, messageFilters.prioritaire ? styles.messageFilterTextActive : {}]}>
+                  Prioritaire {"\n"} (SDIS BV)
+                </Text>
               </TouchableOpacity>
             )}
             {canSeeDebug && (
-              <TouchableOpacity style={[styles.messageFilterButton, messageFilters.debug ? styles.messageFilterButtonActive : {}]} onPress={() => toggleFilter("debug")}>
-                <Text style={[styles.messageFilterText, messageFilters.debug ? styles.messageFilterTextActive : {}]}>Debug {"\n"} (Tests PP1)</Text>
+              <TouchableOpacity
+                style={[styles.messageFilterButton, messageFilters.debug ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleFilter("debug")}
+              >
+                <Text style={[styles.messageFilterText, messageFilters.debug ? styles.messageFilterTextActive : {}]}>
+                  Debug {"\n"} (Tests PP1)
+                </Text>
               </TouchableOpacity>
             )}
           </View>
 
           <View style={styles.input}>
             <Icon name="search" size={20} color={styles.inputIcon?.color || "#666"} style={styles.inputIcon} />
-            <TextInput style={{ flex: 1, color: styles.messageText?.color || "#333" }} placeholder="Rechercher dans les messages" value={searchQuery} onChangeText={handleSearch} />
+            <TextInput
+              style={{ flex: 1, color: styles.messageText?.color || "#333" }}
+              placeholder="Rechercher dans les messages"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
           </View>
 
           <FlatList
@@ -469,6 +516,40 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
               Profil
             </Text>
           </TouchableOpacity>
+
+          {/* Boutons pour gérer les notifications */}
+          <View style={{ flexDirection: "row", marginVertical: 10, paddingHorizontal: 10 }}>
+            {canSeeInfo && (
+              <TouchableOpacity
+                style={[styles.messageFilterButton, notificationSettings.info ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleNotificationSetting("info")}
+              >
+                <Text style={[styles.messageFilterText, notificationSettings.info ? styles.messageFilterTextActive : {}]}>
+                  Notifications Info
+                </Text>
+              </TouchableOpacity>
+            )}
+            {canSeePrioritaire && (
+              <TouchableOpacity
+                style={[styles.messageFilterButton, notificationSettings.prioritaire ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleNotificationSetting("prioritaire")}
+              >
+                <Text style={[styles.messageFilterText, notificationSettings.prioritaire ? styles.messageFilterTextActive : {}]}>
+                  Notifications Prioritaire
+                </Text>
+              </TouchableOpacity>
+            )}
+            {canSeeDebug && (
+              <TouchableOpacity
+                style={[styles.messageFilterButton, notificationSettings.debug ? styles.messageFilterButtonActive : {}]}
+                onPress={() => toggleNotificationSetting("debug")}
+              >
+                <Text style={[styles.messageFilterText, notificationSettings.debug ? styles.messageFilterTextActive : {}]}>
+                  Notifications Debug
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </>
       )}
 
@@ -478,7 +559,15 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
         </View>
       )}
 
-      <WebSocket ref={wsRef} url="ws://84.234.18.3:8080" onOpen={handleWsConnect} onMessage={handleWebSocketMessage} onError={(error) => console.error("Détails erreur WebSocket :", JSON.stringify(error))} onClose={handleWsDisconnect} reconnect />
+      <WebSocket
+        ref={wsRef}
+        url="ws://84.234.18.3:8080"
+        onOpen={handleWsConnect}
+        onMessage={handleWebSocketMessage}
+        onError={(error) => console.error("Détails erreur WebSocket :", JSON.stringify(error))}
+        onClose={handleWsDisconnect}
+        reconnect
+      />
     </SafeAreaView>
   );
 };

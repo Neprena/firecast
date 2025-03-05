@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.ecascan.ios</string>
+	<string>com.neprena.ecascan</string>
 	<key>PROJECT_ID</key>
 	<string>yr-ecascan</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,7 +25,7 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:915032574766:ios:9904cd218854be1fa288bf</string>
+	<string>1:915032574766:ios:e3c6964b5733c0e1a288bf</string>
 	<key>DATABASE_URL</key>
 	<string>https://yr-ecascan-default-rtdb.europe-west1.firebasedatabase.app</string>
 </dict>

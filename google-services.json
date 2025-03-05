@@ -8,9 +8,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:915032574766:android:98c2de7bb5560dffa288bf",
+        "mobilesdk_app_id": "1:915032574766:android:9ef5245ad5d10276a288bf",
         "android_client_info": {
-          "package_name": "com.ecascan.app"
+          "package_name": "com.neprena.ecascan"
         }
       },
       "oauth_client": [],

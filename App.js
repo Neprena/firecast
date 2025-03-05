@@ -13,7 +13,7 @@ import AdminScreen from "./screens/AdminScreen";
 import EditUserScreen from "./screens/EditUserScreen";
 import NotificationsSettingsScreen from "./screens/NotificationsSettingsScreen";
 import { lightStyles, darkStyles } from "./styles";
-import messaging from "@react-native-firebase/messaging"; // Import direct
+import { messaging } from "./firebaseConfig";
 
 const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
@@ -36,38 +36,42 @@ const App = () => {
         if (storedEmail) {
           setEmail(storedEmail);
           await fetchUserInfo(storedEmail);
+          await registerForPushNotifications(storedEmail); // Génère le token après avoir l’email
         }
       } catch (error) {
         console.warn("Erreur lors de la vérification du statut de connexion :", error);
       }
     };
     checkLoginStatus();
-    registerForPushNotifications();
 
     const interval = setInterval(() => {
       if (isConnected && email) {
         fetchUserInfo(email);
       }
-    }, 60 * 100);
+    }, 60 * 1000);
 
-    // Ajout des logs pour les notifications en arrière-plan
+    const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
+      console.log("Notification FCM reçue en avant-plan :", JSON.stringify(remoteMessage, null, 2));
+    });
+
     messaging()
       .getInitialNotification()
       .then((remoteMessage) => {
         if (remoteMessage) {
-          console.log("App ouverte par notification FCM :", JSON.stringify(remoteMessage, null, 2));
+          console.log("App ouverte par notification :", JSON.stringify(remoteMessage, null, 2));
         } else {
-          console.log("Aucune notification initiale détectée au démarrage");
+          console.log("Aucune notification initiale détectée");
         }
       })
       .catch((error) => console.error("Erreur getInitialNotification :", error));
 
     const unsubscribeBackground = messaging().onNotificationOpenedApp((remoteMessage) => {
-      console.log("Notification FCM cliquée depuis arrière-plan :", JSON.stringify(remoteMessage, null, 2));
+      console.log("Notification cliquée depuis arrière-plan :", JSON.stringify(remoteMessage, null, 2));
     });
 
     return () => {
       clearInterval(interval);
+      unsubscribeForeground();
       unsubscribeBackground();
     };
   }, [isConnected, email]);
@@ -76,10 +80,7 @@ const App = () => {
     try {
       const response = await fetch(`${API_URL}/user-info`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
         body: JSON.stringify({ email: userEmail }),
       });
       const json = await response.json();
@@ -110,7 +111,6 @@ const App = () => {
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Erreur de connexion");
-
       await AsyncStorage.setItem("email", loginEmail);
       setUserData({
         email: json.email,
@@ -121,7 +121,7 @@ const App = () => {
       setEmail(loginEmail);
       setPassword(loginPassword);
       setIsConnected(true);
-      if (fcmToken) await registerPushToken(loginEmail);
+      await registerForPushNotifications(loginEmail); // Génère et enregistre le token après connexion
     } catch (error) {
       console.warn("Erreur lors de la connexion :", error.message);
       Alert.alert("Erreur", error.message);
@@ -151,10 +151,7 @@ const App = () => {
     try {
       const response = await fetch(`${API_URL}/messages`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
         body: JSON.stringify({ email: userEmail, endDate, startDate }),
       });
       const json = await response.json();
@@ -166,55 +163,43 @@ const App = () => {
     }
   };
 
-  const registerForPushNotifications = async () => {
+  const registerForPushNotifications = async (userEmail) => {
     if (!Device.isDevice) {
       console.warn("Notifications push non disponibles sur simulateur");
       return;
     }
     try {
-      console.log("Demande de permission pour les notifications...");
       const authStatus = await messaging().requestPermission();
       console.log("Statut des permissions :", authStatus);
-      if (authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL) {
-        // Supprime l’ancien token
-        await messaging().deleteToken();
-        console.log("Ancien token supprimé, génération d’un nouveau...");
+      if (authStatus === 1 || authStatus === 2) { // AUTHORIZED (1) ou PROVISIONAL (2)
         const token = await messaging().getToken();
-        console.log("Nouveau FCM Token généré pour cet appareil :", token);
-        // Vérifie si le token semble être pour iOS (pas de préfixe APA91b)
-        if (token.startsWith("APA91b")) {
-          console.warn("Attention : Le token ressemble à un token Android, pas iOS !");
-        } else {
-          console.log("Token semble compatible iOS");
-        }
+        console.log("FCM Token généré :", token);
         setFcmToken(token);
-        if (email) {
-          console.log("Enregistrement du token pour l’email :", email);
-          await registerPushToken(email);
+        if (userEmail) {
+          await registerPushToken(userEmail, token);
         } else {
-          console.log("Email non disponible, token non enregistré");
+          console.warn("Email non disponible lors de la génération du token");
         }
       } else {
         console.warn("Permissions de notifications refusées");
       }
     } catch (error) {
-      console.error("Erreur lors de la génération ou de l’enregistrement du token FCM :", error);
+      console.error("Erreur lors de la génération du token FCM :", error);
     }
   };
 
-  const registerPushToken = async (userEmail) => {
-    if (!fcmToken || !userEmail) {
+  const registerPushToken = async (userEmail, token) => {
+    if (!token || !userEmail) {
       console.warn("Token ou email manquant pour enregistrement");
       return;
     }
     try {
+      const storedSettings = await AsyncStorage.getItem("notificationSettings");
+      const notificationSettings = storedSettings ? JSON.parse(storedSettings) : { debug: false, info: true, prioritaire: false };
       const response = await fetch(`${API_URL}/register-token`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify({ email: userEmail, token: fcmToken }),
+        headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+        body: JSON.stringify({ email: userEmail, token, notificationSettings }),
       });
       const json = await response.json();
       if (response.ok) {
@@ -231,26 +216,47 @@ const App = () => {
     <NavigationContainer>
       <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={isDarkMode ? "#121212" : "#fff"} />
       <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: isDarkMode ? "#121212" : "#fff" },
-        }}
+        screenOptions={{ headerShown: false, contentStyle: { backgroundColor: isDarkMode ? "#121212" : "#fff" } }}
       >
         {isConnected ? (
           <>
             <Stack.Screen name="Messages">
-              {(props) => <MessagesScreen {...props} styles={styles} fetchMessages={fetchMessages} isConnected={isConnected} subscriptionEndDate={userData?.subscriptionEndDate} role={userData?.role} email={userData?.email} />}
+              {(props) => (
+                <MessagesScreen
+                  {...props}
+                  styles={styles}
+                  fetchMessages={fetchMessages}
+                  isConnected={isConnected}
+                  subscriptionEndDate={userData?.subscriptionEndDate}
+                  role={userData?.role}
+                  email={userData?.email}
+                />
+              )}
             </Stack.Screen>
             <Stack.Screen name="Profile">
-              {(props) => <ProfileScreen {...props} styles={styles} email={userData.email} handleLogout={handleLogout} isConnected={isConnected} subscriptionEndDate={userData.subscriptionEndDate} role={userData.role} />}
+              {(props) => (
+                <ProfileScreen
+                  {...props}
+                  styles={styles}
+                  email={userData.email}
+                  handleLogout={handleLogout}
+                  isConnected={isConnected}
+                  subscriptionEndDate={userData.subscriptionEndDate}
+                  role={userData.role}
+                />
+              )}
             </Stack.Screen>
             <Stack.Screen name="Admin">{(props) => <AdminScreen {...props} styles={styles} email={userData.email} />}</Stack.Screen>
             <Stack.Screen name="EditUser">{(props) => <EditUserScreen {...props} styles={styles} />}</Stack.Screen>
             <Stack.Screen name="MessageDetail">{(props) => <MessageDetail {...props} styles={styles} />}</Stack.Screen>
-            <Stack.Screen name="NotificationsSettings">{(props) => <NotificationsSettingsScreen {...props} styles={styles} role={userData?.role} />}</Stack.Screen>
+            <Stack.Screen name="NotificationsSettings">
+              {(props) => <NotificationsSettingsScreen {...props} styles={styles} role={userData?.role} />}
+            </Stack.Screen>
           </>
         ) : (
-          <Stack.Screen name="Login">{(props) => <LoginScreen {...props} setEmail={setEmail} setPassword={setPassword} handleLogin={handleLogin} styles={styles} />}</Stack.Screen>
+          <Stack.Screen name="Login">
+            {(props) => <LoginScreen {...props} setEmail={setEmail} setPassword={setPassword} handleLogin={handleLogin} styles={styles} />}
+          </Stack.Screen>
         )}
       </Stack.Navigator>
     </NavigationContainer>
