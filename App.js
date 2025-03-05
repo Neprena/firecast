@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { StatusBar, useColorScheme, Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Device from "expo-device";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "./screens/LoginScreen";
@@ -12,6 +13,7 @@ import AdminScreen from "./screens/AdminScreen";
 import EditUserScreen from "./screens/EditUserScreen";
 import NotificationsSettingsScreen from "./screens/NotificationsSettingsScreen";
 import { lightStyles, darkStyles } from "./styles";
+import messaging from "@react-native-firebase/messaging"; // Import direct
 
 const API_URL = "https://api.ecascan.npna.ch";
 const API_KEY = "c80b17dd-5cdc-4b66-b5cf-1d4d62860fbc";
@@ -23,6 +25,7 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [fcmToken, setFcmToken] = useState("");
   const isDarkMode = useColorScheme() === "dark";
   const styles = isDarkMode ? darkStyles : lightStyles;
 
@@ -39,6 +42,7 @@ const App = () => {
       }
     };
     checkLoginStatus();
+    registerForPushNotifications();
 
     const interval = setInterval(() => {
       if (isConnected && email) {
@@ -46,7 +50,26 @@ const App = () => {
       }
     }, 60 * 100);
 
-    return () => clearInterval(interval);
+    // Ajout des logs pour les notifications en arrière-plan
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage) => {
+        if (remoteMessage) {
+          console.log("App ouverte par notification FCM :", JSON.stringify(remoteMessage, null, 2));
+        } else {
+          console.log("Aucune notification initiale détectée au démarrage");
+        }
+      })
+      .catch((error) => console.error("Erreur getInitialNotification :", error));
+
+    const unsubscribeBackground = messaging().onNotificationOpenedApp((remoteMessage) => {
+      console.log("Notification FCM cliquée depuis arrière-plan :", JSON.stringify(remoteMessage, null, 2));
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribeBackground();
+    };
   }, [isConnected, email]);
 
   const fetchUserInfo = async (userEmail) => {
@@ -98,6 +121,7 @@ const App = () => {
       setEmail(loginEmail);
       setPassword(loginPassword);
       setIsConnected(true);
+      if (fcmToken) await registerPushToken(loginEmail);
     } catch (error) {
       console.warn("Erreur lors de la connexion :", error.message);
       Alert.alert("Erreur", error.message);
@@ -122,8 +146,8 @@ const App = () => {
     }
   };
 
-  const fetchMessages = async () => {
-    if (!userData?.email) return [];
+  const fetchMessages = async (userEmail, endDate, startDate) => {
+    if (!userEmail) return [];
     try {
       const response = await fetch(`${API_URL}/messages`, {
         method: "POST",
@@ -131,7 +155,7 @@ const App = () => {
           "Content-Type": "application/json",
           "x-api-key": API_KEY,
         },
-        body: JSON.stringify({ email: userData.email }),
+        body: JSON.stringify({ email: userEmail, endDate, startDate }),
       });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Erreur lors de la récupération des messages");
@@ -142,12 +166,70 @@ const App = () => {
     }
   };
 
+  const registerForPushNotifications = async () => {
+    if (!Device.isDevice) {
+      console.warn("Notifications push non disponibles sur simulateur");
+      return;
+    }
+    try {
+      console.log("Demande de permission pour les notifications...");
+      const authStatus = await messaging().requestPermission();
+      console.log("Statut des permissions :", authStatus);
+      if (authStatus === messaging.AuthorizationStatus.AUTHORIZED || authStatus === messaging.AuthorizationStatus.PROVISIONAL) {
+        // Supprime l’ancien token
+        await messaging().deleteToken();
+        console.log("Ancien token supprimé, génération d’un nouveau...");
+        const token = await messaging().getToken();
+        console.log("Nouveau FCM Token généré pour cet appareil :", token);
+        // Vérifie si le token semble être pour iOS (pas de préfixe APA91b)
+        if (token.startsWith("APA91b")) {
+          console.warn("Attention : Le token ressemble à un token Android, pas iOS !");
+        } else {
+          console.log("Token semble compatible iOS");
+        }
+        setFcmToken(token);
+        if (email) {
+          console.log("Enregistrement du token pour l’email :", email);
+          await registerPushToken(email);
+        } else {
+          console.log("Email non disponible, token non enregistré");
+        }
+      } else {
+        console.warn("Permissions de notifications refusées");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la génération ou de l’enregistrement du token FCM :", error);
+    }
+  };
+
+  const registerPushToken = async (userEmail) => {
+    if (!fcmToken || !userEmail) {
+      console.warn("Token ou email manquant pour enregistrement");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/register-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+        },
+        body: JSON.stringify({ email: userEmail, token: fcmToken }),
+      });
+      const json = await response.json();
+      if (response.ok) {
+        console.log("Token enregistré avec succès :", json);
+      } else {
+        console.warn("Échec de l’enregistrement du token :", json);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l’enregistrement du token :", error);
+    }
+  };
+
   return (
     <NavigationContainer>
-      <StatusBar
-        style={isDarkMode ? "light" : "dark"}
-        backgroundColor={isDarkMode ? "#121212" : "#fff"} // Ajout de backgroundColor
-      />
+      <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={isDarkMode ? "#121212" : "#fff"} />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

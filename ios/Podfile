@@ -44,6 +44,13 @@ target 'ECAScan' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
+  # Pods Firebase avec en-têtes modulaires spécifiques
+  pod 'Firebase', :modular_headers => true
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'FirebaseMessaging', :modular_headers => true
+
   post_install do |installer|
     react_native_post_install(
       installer,

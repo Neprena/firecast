@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Animated, Linking, useColorScheme } from "react-native";
+import { SafeAreaView, Text, View, FlatList, TouchableOpacity, TextInput, Animated, Linking, useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import WebSocket from "react-native-websocket";
 import { Audio } from "expo-av";
-import * as Notifications from "expo-notifications";
+import { useNavigation } from "@react-navigation/native";
+import { messaging } from "../firebaseConfig"; // Changement : importation nommée avec {}
 
-const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnected, subscriptionEndDate, role, email }) => {
-  const [loading, setLoading] = useState(false);
+const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDate, role, email }) => {
+  const navigation = useNavigation();
+  const [explicitLoading, setExplicitLoading] = useState(false);
+  const [silentLoading, setSilentLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allMessages, setAllMessages] = useState([]);
   const [notificationSettings, setNotificationSettings] = useState({
@@ -26,7 +29,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   const wsRef = useRef(null);
   const isFocused = useRef(true);
   const disconnectTimeoutRef = useRef(null);
-  const isDarkMode = useColorScheme() === "dark"; // Ajout pour détecter le thème
+  const isDarkMode = useColorScheme() === "dark";
 
   const isSubscriptionExpired = role !== "admin" && (!subscriptionEndDate || new Date(subscriptionEndDate) < new Date());
   const canSeeDebug = role && role.toLowerCase() === "admin";
@@ -87,7 +90,8 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
     }
   };
 
-  const loadMessagesFromStorage = async (append = false) => {
+  const loadMessagesFromStorage = async (append = false, isSilent = false) => {
+    const setLoading = isSilent ? setSilentLoading : setExplicitLoading;
     setLoading(true);
     try {
       const storedMessages = await AsyncStorage.getItem("messages");
@@ -113,7 +117,11 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
         console.log(`[${new Date().toLocaleString()}] Messages récupérés via fetchMessages (${startDate.toISOString()} - ${endDate.toISOString()}) : ${newMessages.length} messages`);
         await AsyncStorage.setItem("messages", JSON.stringify(uniqueMessages));
         setOldestDate(startDate);
-        setAllMessages(uniqueMessages);
+        setAllMessages((prev) => {
+          const prevIds = new Set(prev.map((m) => m.id));
+          const updated = uniqueMessages.filter((m) => !prevIds.has(m.id)).concat(prev);
+          return updated.slice(0, prev.length + newMessages.length);
+        });
       } else if (!append) {
         setAllMessages(messagesToSet);
       }
@@ -125,7 +133,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   };
 
   const handleLoadMore = () => {
-    loadMessagesFromStorage(true);
+    loadMessagesFromStorage(true, false);
   };
 
   const handleWebSocketMessage = async (event) => {
@@ -170,31 +178,18 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
       return uniqueMessages;
     });
 
-    if (shouldNotify) {
-      if (isFocused.current && soundRef.current) {
-        try {
-          const status = await soundRef.current.getStatusAsync();
-          if (status.isLoaded) {
-            await soundRef.current.replayAsync();
-            console.log(`[${new Date().toLocaleString()}] Son joué pour ${newMessage.type}`);
-          } else {
-            console.warn(`[${new Date().toLocaleString()}] Son non chargé pour ${newMessage.type}`);
-          }
-        } catch (error) {
-          console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
+    if (shouldNotify && isFocused.current && soundRef.current) {
+      try {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          await soundRef.current.replayAsync();
+          console.log(`[${new Date().toLocaleString()}] Son joué pour ${newMessage.type}`);
+        } else {
+          console.warn(`[${new Date().toLocaleString()}] Son non chargé pour ${newMessage.type}`);
         }
+      } catch (error) {
+        console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son : ${error.message}`);
       }
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Nouveau message (${newMessage.type})`,
-          body: newMessage.message,
-          sound: "default",
-        },
-        trigger: null,
-      });
-      console.log(`[${new Date().toLocaleString()}] Notification locale déclenchée pour ${newMessage.type}`);
-    } else {
-      console.log(`[${new Date().toLocaleString()}] Pas de notification pour ${newMessage.type} (shouldNotify: false)`);
     }
 
     Animated.timing(animatedMessage.fadeAnim, {
@@ -209,7 +204,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   };
 
   const handleSubscribe = async () => {
-    setLoading(true);
+    setExplicitLoading(true);
     try {
       const response = await fetch("https://api.ecascan.npna.ch/subscribe", {
         method: "POST",
@@ -225,19 +220,19 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
     } catch (error) {
       Alert.alert("Erreur", error.message);
     } finally {
-      setLoading(false);
+      setExplicitLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    setLoading(true);
+    setExplicitLoading(true);
     try {
       await AsyncStorage.removeItem("email");
       navigation.navigate("Login");
     } catch (error) {
       Alert.alert("Erreur", "Erreur lors de la déconnexion");
     } finally {
-      setLoading(false);
+      setExplicitLoading(false);
     }
   };
 
@@ -312,7 +307,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
   });
 
   useEffect(() => {
-    loadMessagesFromStorage();
+    loadMessagesFromStorage(false, true);
     loadNotificationSettings();
     loadMessageFilters();
 
@@ -343,19 +338,46 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
     };
     configureAudio();
 
-    const requestPermissions = async () => {
-      const { status } = await Notifications.requestPermissionsAsync();
-      console.log(`[${new Date().toLocaleString()}] Statut permissions notifications : ${status}`);
-      if (status !== "granted") {
-        console.warn("Permissions de notification refusées");
+    const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
+      console.log("Notification FCM reçue en avant-plan :", remoteMessage);
+      const data = remoteMessage.data || {};
+      if (data.type === "new_message" && !isSubscriptionExpired) {
+        const storedSettings = await AsyncStorage.getItem("notificationSettings");
+        const currentSettings = storedSettings ? JSON.parse(storedSettings) : notificationSettings;
+        const messageType = remoteMessage.notification?.title?.includes("Prioritaire") ? "Prioritaire" : remoteMessage.notification?.title?.includes("Info") ? "Info" : "Debug";
+        const shouldNotify = (messageType === "Debug" && currentSettings.debug && canSeeDebug) || (messageType === "Info" && currentSettings.info && canSeeInfo) || (messageType === "Prioritaire" && currentSettings.prioritaire && canSeePrioritaire);
+
+        if (shouldNotify && isFocused.current && soundRef.current) {
+          try {
+            const status = await soundRef.current.getStatusAsync();
+            if (status.isLoaded) {
+              await soundRef.current.replayAsync();
+              console.log(`[${new Date().toLocaleString()}] Son joué pour FCM ${messageType}`);
+            }
+          } catch (error) {
+            console.error(`[${new Date().toLocaleString()}] Erreur lors de la lecture du son FCM : ${error.message}`);
+          }
+        }
+
+        loadMessagesFromStorage(false, true);
       }
-    };
-    requestPermissions();
+    });
+
+    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log("Notification FCM en arrière-plan reçue :", JSON.stringify(remoteMessage, null, 2));
+      if (remoteMessage.data?.type === "new_message" && !isSubscriptionExpired) {
+        console.log("Traitement du message en arrière-plan pour email:", email);
+        await loadMessagesFromStorage(false, true);
+        console.log("Messages rechargés en arrière-plan");
+      } else {
+        console.log("Message ignoré en arrière-plan : type ou abonnement invalide", remoteMessage.data?.type, isSubscriptionExpired);
+      }
+    });
 
     const unsubscribeFocus = navigation.addListener("focus", () => {
       isFocused.current = true;
       console.log(`[${new Date().toLocaleString()}] MessagesScreen en focus, rechargement des messages`);
-      loadMessagesFromStorage(false);
+      loadMessagesFromStorage(false, true);
     });
 
     const unsubscribeBlur = navigation.addListener("blur", () => {
@@ -376,6 +398,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
       if (disconnectTimeoutRef.current) {
         clearTimeout(disconnectTimeoutRef.current);
       }
+      unsubscribeForeground();
       unsubscribeFocus();
       unsubscribeBlur();
     };
@@ -428,15 +451,15 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
             renderItem={renderMessage}
             ListEmptyComponent={<Text style={styles.info}>Aucun message</Text>}
             ListFooterComponent={
-              <TouchableOpacity style={[styles.secondaryButton, { marginVertical: 10 }]} onPress={handleLoadMore} disabled={loading}>
+              <TouchableOpacity style={[styles.secondaryButton, { marginVertical: 10 }]} onPress={handleLoadMore} disabled={explicitLoading}>
                 <Icon name="expand-more" size={20} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.buttonText} allowFontScaling={false} numberOfLines={1} ellipsizeMode="none">
                   Charger plus
                 </Text>
               </TouchableOpacity>
             }
-            refreshing={loading}
-            onRefresh={() => loadMessagesFromStorage(false)}
+            refreshing={explicitLoading}
+            onRefresh={() => loadMessagesFromStorage(false, false)}
             contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
           />
 
@@ -449,7 +472,7 @@ const MessagesScreen = ({ navigation, messages, fetchMessages, styles, isConnect
         </>
       )}
 
-      {loading && !isSubscriptionExpired && (
+      {explicitLoading && !isSubscriptionExpired && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={styles.button.backgroundColor} />
         </View>
