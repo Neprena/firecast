@@ -2,7 +2,7 @@
   "expo": {
     "name": "ECA-Scan",
     "slug": "ecascan",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "ecascan",
@@ -19,7 +19,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "0.0.5"
+      "buildNumber": "0.0.6",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +32,7 @@
           "apiKey": "AIzaSyAM54lhiYraHQ9WG-Nm49ZyNZc9pbIu0Lk"
         }
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.neprena.ecascan"
     },
     "web": {
@@ -47,6 +49,17 @@
       "androidMode": "default",
       "androidCollapsedTitle": "Nouvelle alerte",
       "androidSound": "./assets/sounds/notification_sound.mp3"
-    }
+    },
+    "plugins": [
+      [
+        "@react-native-firebase/app",
+        {
+          "androidGoogleServicesFile": "./google-services.json",
+          "iosGoogleServicesFile": "./GoogleService-Info.plist"
+        }
+      ],
+      "@react-native-firebase/messaging",
+      "expo-build-properties"
+    ]
   }
 }
