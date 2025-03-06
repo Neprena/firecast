@@ -48,4 +48,4 @@ with_node \
   --target "/Users/yrapenne/Projects/ecascan-mobile/ios/Pods/Target Support Files/Pods-ECAScan/ExpoModulesProvider.swift" \
   --entitlement "/Users/yrapenne/Projects/ecascan-mobile/ios/ECAScan/ECAScan.entitlements" \
   --platform "apple" \
-  --packages "expo" "expo-application" "expo-asset" "expo-av" "expo-constants" "expo-device" "expo-file-system" "expo-font" "expo-keep-awake"
+  --packages "expo" "expo-application" "expo-asset" "expo-av" "expo-constants" "expo-dev-launcher" "expo-dev-menu" "expo-device" "expo-file-system" "expo-font" "expo-keep-awake"

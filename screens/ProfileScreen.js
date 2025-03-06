@@ -138,7 +138,7 @@ const ProfileScreen = ({ navigation, email, handleLogout, styles, isConnected, s
 
       {/* Boutons corrigés */}
       {isSubscriptionExpired && (
-        <TouchableOpacity style={[styles.button, { marginVertical: 10 }]} onPress={handleSubscribe}>
+        <TouchableOpacity style={[styles.button, { marginVertical: 10 }]} onPress={() => navigation.navigate("SubscriptionScreen")}>
           <Icon name="payment" size={20} color="#fff" style={styles.buttonIcon} />
           <Text style={styles.buttonText}>Se réabonner</Text>
         </TouchableOpacity>

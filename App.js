@@ -12,6 +12,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import AdminScreen from "./screens/AdminScreen";
 import EditUserScreen from "./screens/EditUserScreen";
 import NotificationsSettingsScreen from "./screens/NotificationsSettingsScreen";
+import SubscriptionScreen from "./screens/SubscriptionScreen";
 import { lightStyles, darkStyles } from "./styles";
 import { messaging } from "./firebaseConfig";
 
@@ -193,21 +194,31 @@ const fetchMessages = async (email, endDate, startDate) => {
   };
 
   const registerPushToken = async (userEmail, token) => {
-    if (!token || !userEmail) {
-      console.warn("Token ou email manquant pour enregistrement");
+    if (!token) {
+      console.warn("Token manquant pour l'enregistrement");
       return;
     }
     try {
+      // Récupération des paramètres de notifications depuis AsyncStorage
       const storedSettings = await AsyncStorage.getItem("notificationSettings");
-      const notificationSettings = storedSettings ? JSON.parse(storedSettings) : { debug: false, info: true, prioritaire: false };
+      const notificationSettings = storedSettings
+        ? JSON.parse(storedSettings)
+        : { debug: false, info: true, prioritaire: false };
+
+      // Envoi de la requête en incluant le token comme identifiant principal
       const response = await fetch(`${API_URL}/register-token`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
-        body: JSON.stringify({ email: userEmail, token, notificationSettings }),
+        body: JSON.stringify({
+          token,         // identifiant unique de l'appareil
+          email: userEmail, // facultatif, pour garder une association si besoin
+          notificationSettings,
+        }),
       });
+
       const json = await response.json();
       if (response.ok) {
-        console.log("Token enregistré avec succès :", json);
+        console.log("Token enregistré/mis à jour avec succès :", json);
       } else {
         console.warn("Échec de l’enregistrement du token :", json);
       }
@@ -250,6 +261,9 @@ const fetchMessages = async (email, endDate, startDate) => {
                 />
               )}
             </Stack.Screen>
+            <Stack.Screen name="SubscriptionScreen">
+              {(props) => <SubscriptionScreen {...props} styles={styles} email={userData.email} />}
+            </Stack.Screen>
             <Stack.Screen name="Admin">{(props) => <AdminScreen {...props} styles={styles} email={userData.email} />}</Stack.Screen>
             <Stack.Screen name="EditUser">{(props) => <EditUserScreen {...props} styles={styles} />}</Stack.Screen>
             <Stack.Screen name="MessageDetail">{(props) => <MessageDetail {...props} styles={styles} />}</Stack.Screen>
@@ -261,6 +275,7 @@ const fetchMessages = async (email, endDate, startDate) => {
           <Stack.Screen name="Login">
             {(props) => <LoginScreen {...props} setEmail={setEmail} setPassword={setPassword} handleLogin={handleLogin} styles={styles} />}
           </Stack.Screen>
+          
         )}
       </Stack.Navigator>
     </NavigationContainer>

@@ -100,6 +100,7 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
     const setLoading = isSilent ? setSilentLoading : setExplicitLoading;
     setLoading(true);
     try {
+      // Chargement des messages locaux
       const storedMessages = await AsyncStorage.getItem("messages");
       let messagesToSet = append && allMessages.length ? [...allMessages] : [];
       if (!append && storedMessages) {
@@ -110,10 +111,13 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
         console.log(`[${new Date().toLocaleString()}] Messages chargés depuis AsyncStorage : ${messagesToSet.length} messages`);
       }
 
+      // Définir la plage temporelle pour la requête
       const endDate = append ? oldestDate : new Date();
       const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
       const fetchedMessages = await fetchMessages(email, endDate.toISOString(), startDate.toISOString());
-      if (fetchedMessages && Array.isArray(fetchedMessages)) {
+
+      // Si de nouveaux messages sont récupérés, on les utilise
+      if (Array.isArray(fetchedMessages) && fetchedMessages.length > 0) {
         const newMessages = fetchedMessages.map((msg) => ({
           ...msg,
           fadeAnim: new Animated.Value(1),
@@ -130,8 +134,10 @@ const MessagesScreen = ({ fetchMessages, styles, isConnected, subscriptionEndDat
           const updated = uniqueMessages.filter((m) => !prevIds.has(m.id)).concat(prev);
           return updated.slice(0, prev.length + newMessages.length);
         });
-      } else if (!append) {
+      } else {
+        // Si aucun nouveau message n'est récupéré, on garde les messages locaux
         setAllMessages(messagesToSet);
+        console.log(`[${new Date().toLocaleString()}] Aucun nouveau message récupéré, utilisation des messages locaux`);
       }
     } catch (error) {
       console.error(`[${new Date().toLocaleString()}] Erreur lors du chargement des messages : ${error.message}`);
