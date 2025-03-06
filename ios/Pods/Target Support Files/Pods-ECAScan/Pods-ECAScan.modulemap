@@ -1,0 +1,6 @@
+module Pods_ECAScan {
+  umbrella header "Pods-ECAScan-umbrella.h"
+
+  export *
+  module * { export * }
+}
