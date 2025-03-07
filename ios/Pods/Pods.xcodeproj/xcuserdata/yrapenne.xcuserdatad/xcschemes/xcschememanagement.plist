@@ -214,6 +214,16 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
+		<key>PurchasesHybridCommon-PurchasesHybridCommon.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>PurchasesHybridCommon.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
 		<key>RCT-Folly-RCT-Folly_privacy.xcscheme</key>
 		<dict>
 			<key>isShown</key>
@@ -259,7 +269,7 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>RNIap.xcscheme</key>
+		<key>RNPurchases.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -540,6 +550,16 @@
 			<false/>
 		</dict>
 		<key>ReactCommon.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>RevenueCat-RevenueCat.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>RevenueCat.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>

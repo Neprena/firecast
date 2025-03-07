@@ -382,6 +382,8 @@ PODS:
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
   - PromisesObjC (2.4.0)
+  - PurchasesHybridCommon (13.22.0):
+    - RevenueCat (= 5.18.0)
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1954,6 +1956,7 @@ PODS:
     - React-logger (= 0.76.7)
     - React-perflogger (= 0.76.7)
     - React-utils (= 0.76.7)
+  - RevenueCat (5.18.0)
   - RNCAsyncStorage (1.23.1):
     - DoubleConversion
     - glog
@@ -1983,12 +1986,9 @@ PODS:
     - FirebaseCoreExtension
     - React-Core
     - RNFBApp
-  - RNIap (12.16.2):
-    - RCT-Folly
-    - RCTRequired
-    - RCTTypeSafety
+  - RNPurchases (8.8.0):
+    - PurchasesHybridCommon (= 13.22.0)
     - React-Core
-    - ReactCommon/turbomodule/core
   - RNScreens (4.4.0):
     - DoubleConversion
     - glog
@@ -2152,7 +2152,7 @@ DEPENDENCIES:
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
-  - RNIap (from `../node_modules/react-native-iap`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
@@ -2171,6 +2171,8 @@ SPEC REPOS:
     - GoogleUtilities
     - nanopb
     - PromisesObjC
+    - PurchasesHybridCommon
+    - RevenueCat
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -2347,8 +2349,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/app"
   RNFBMessaging:
     :path: "../node_modules/@react-native-firebase/messaging"
-  RNIap:
-    :path: "../node_modules/react-native-iap"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNVectorIcons:
@@ -2393,6 +2395,7 @@ SPEC CHECKSUMS:
   hermes-engine: eb4a80f6bf578536c58a44198ec93a30f6e69218
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
+  PurchasesHybridCommon: 16367f792481e8e2d61101ecb607b566937aa67f
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: 7691283dd69fed46f6653d376de6fa83aaad774c
   RCTRequired: eac044a04629288f272ee6706e31f81f3a2b4bfe
@@ -2452,10 +2455,11 @@ SPEC CHECKSUMS:
   React-utils: 0342746d2cf989cf5e0d1b84c98cfa152edbdf3f
   ReactCodegen: e1c019dc68733dd2c5d3b263b4a6dc72002c0045
   ReactCommon: 81e0744ee33adfd6d586141b927024f488bc49ea
+  RevenueCat: e825836f5d6baa870c53d7281be25a5fd91abd91
   RNCAsyncStorage: ff8f69859448bde50f1c25d3e7eb37555fed33ab
   RNFBApp: 5e27e8311042d41fa8350f1751ab42e042c39d52
   RNFBMessaging: 72cf5cca8a14ef9dc66b82b75b5cca1091f169e5
-  RNIap: d73cedfb73b396cad75f90f4ed7d64352d6381cf
+  RNPurchases: d1f57477a73970b532790a85f48d1611d7b5b030
   RNScreens: 351f431ef2a042a1887d4d90e1c1024b8ae9d123
   RNVectorIcons: a24016b773380b1aa37fca501ec6b94a951890a0
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
